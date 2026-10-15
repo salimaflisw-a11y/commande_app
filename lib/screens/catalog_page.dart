@@ -89,11 +89,6 @@ class _CatalogPageState extends State<CatalogPage> {
           onPressed: () => Navigator.of(context).pushNamed('/login'),
           tooltip: 'Mon Compte',
         ),
-        IconButton(
-          icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF263238), size: 26),
-          onPressed: () {}, // Takes you nowhere
-          tooltip: 'Consulter le panier',
-        ),
         const SizedBox(width: 8),
       ],
     );
