@@ -89,11 +89,10 @@ class _CatalogPageState extends State<CatalogPage> {
           onPressed: () => Navigator.of(context).pushNamed('/login'),
           tooltip: 'Mon Compte',
         ),
-        // [Consulter Panier] disabled as requested
         IconButton(
-          icon: const Icon(Icons.shopping_bag_outlined, color: Colors.black26, size: 26),
-          onPressed: null, // Disabled
-          tooltip: 'Consulter panier (désactivé)',
+          icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF263238), size: 26),
+          onPressed: () {}, // Takes you nowhere
+          tooltip: 'Consulter le panier',
         ),
         const SizedBox(width: 8),
       ],
@@ -247,26 +246,34 @@ class _CatalogPageState extends State<CatalogPage> {
                       ),
                     ),
 
-                    // Disabled [Consulter] button as requested
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.3),
+                    // [Consulter] button - active look, takes you nowhere
+                    Material(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      elevation: 2,
+                      child: InkWell(
                         borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        children: const [
-                          Text(
-                            'Consulter',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        onTap: () {
+                          // Takes you nowhere
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Text(
+                                'Consulter',
+                                style: TextStyle(
+                                  color: Color(0xFF263238),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(Icons.arrow_forward_ios, color: Color(0xFFE65100), size: 12),
+                            ],
                           ),
-                          SizedBox(width: 4),
-                          Icon(Icons.lock_outline, color: Colors.white70, size: 14),
-                        ],
+                        ),
                       ),
                     ),
                   ],
