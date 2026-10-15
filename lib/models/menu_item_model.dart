@@ -1,14 +1,46 @@
 enum MenuCategory {
-  fastFood('Fast-food', '🍔'),
-  dishes('Plats', '🍲'),
-  coffee('Café', '☕'),
-  drinks('Boissons', '🥤'),
-  desserts('Desserts', '🍰');
+  sandwiches(
+    'Sandwiches',
+    '🥪',
+    'Burgers gourmets, tacos savoureux, club-sandwiches & paninis',
+    'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80',
+  ),
+  plates(
+    'Plats / Plates',
+    '🍲',
+    'Plats mijotés maison, viandes grillées, poissons nobles & pâtes',
+    'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80',
+  ),
+  coffee(
+    'Café',
+    '☕',
+    'Espressos grands crus d\'Éthiopie, cappuccinos & macchiatos glacés',
+    'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80',
+  ),
+  drinks(
+    'Boissons / Drinks',
+    '🥤',
+    'Cocktails sans alcool, jus pressés minute & smoothies vitaminés',
+    'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=1200&q=80',
+  ),
+  desserts(
+    'Desserts',
+    '🍰',
+    'Tiramisu maison, gâteaux coulants, tartes & crêpes fondantes',
+    'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1200&q=80',
+  );
 
   final String label;
   final String emoji;
+  final String subtitle;
+  final String bannerImageUrl;
 
-  const MenuCategory(this.label, this.emoji);
+  const MenuCategory(
+    this.label,
+    this.emoji,
+    this.subtitle,
+    this.bannerImageUrl,
+  );
 }
 
 class MenuItemModel {
@@ -100,7 +132,7 @@ class MenuItemModel {
       price: (json['price'] as num).toDouble(),
       category: MenuCategory.values.firstWhere(
         (c) => c.name == json['category'],
-        orElse: () => MenuCategory.fastFood,
+        orElse: () => MenuCategory.sandwiches,
       ),
       imageUrl: json['imageUrl'] as String,
       rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
@@ -119,14 +151,14 @@ class MenuItemModel {
 
 /// Sample catalog menu items covering all 5 categories
 const List<MenuItemModel> sampleMenuItems = [
-  // --- FAST-FOOD ---
+  // --- SANDWICHES / FAST-FOOD ---
   MenuItemModel(
-    id: 'ff_1',
+    id: 'sw_1',
     name: 'Burger Double Smash Black Angus',
     description:
-        'Deux steaks de bœuf Angus smashés, cheddar fondant affiné, oignons caramélisés, cornichons et sauce secrète sur pain brioché toasté.',
+        'Deux steaks de bœuf Angus smashés, cheddar fondant affiné, oignons caramélisés, cornichons croquants et sauce signature sur pain brioché toasté.',
     price: 11.50,
-    category: MenuCategory.fastFood,
+    category: MenuCategory.sandwiches,
     imageUrl:
         'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
     rating: 4.9,
@@ -143,78 +175,78 @@ const List<MenuItemModel> sampleMenuItems = [
     ],
   ),
   MenuItemModel(
-    id: 'ff_2',
-    name: 'Pizza Margherita Artisanal',
+    id: 'sw_2',
+    name: 'Club Sandwich Poulet Grillé & Avocat',
     description:
-        'Pâte fermentée 48h, sauce tomate San Marzano DOP, mozzarella di bufala campana, basilic frais et filet d\'huile d\'olive extra vierge.',
-    price: 9.90,
-    category: MenuCategory.fastFood,
+        'Triple étage de pain de mie doré, blanc de poulet rôti mariné aux herbes, avocat frais tranché, tomates mûres, œuf dur et mayonnaise légère.',
+    price: 8.90,
+    category: MenuCategory.sandwiches,
     imageUrl:
-        'https://images.unsplash.com/photo-1604382355076-af4b0eb60143?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=800&q=80',
     rating: 4.8,
-    reviewsCount: 98,
+    reviewsCount: 88,
     isPopular: true,
-    isVegetarian: true,
-    prepTime: '12-15 min',
-    calories: 620,
+    prepTime: '8-10 min',
+    calories: 560,
     ingredients: [
-      'Farine Tipo 00',
-      'Sauce San Marzano',
-      'Mozzarella di bufala',
-      'Basilic frais',
-      'Huile d\'olive'
+      'Pain complet grillé',
+      'Poulet fermier mariné',
+      'Avocat frais',
+      'Tomates',
+      'Mayonnaise ciboulette'
     ],
   ),
   MenuItemModel(
-    id: 'ff_3',
-    name: 'Tacos Suprême Croustillant',
+    id: 'sw_3',
+    name: 'Tacos Français Double Viande & Fromagère',
     description:
-        'Filet de poulet croustillant mariné façon cajun, sauce fromagère onctueuse maison, frites fraîches et crudités croquantes.',
-    price: 8.50,
-    category: MenuCategory.fastFood,
+        'Galette dorée garnie de tenders croustillants et viande hachée épicée, frites croustillantes à l\'intérieur et nappe de sauce fromagère secrète.',
+    price: 9.50,
+    category: MenuCategory.sandwiches,
     imageUrl:
         'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?auto=format&fit=crop&w=800&q=80',
     rating: 4.7,
-    reviewsCount: 76,
-    prepTime: '10-12 min',
-    calories: 710,
+    reviewsCount: 95,
+    prepTime: '12 min',
+    calories: 820,
     ingredients: [
-      'Poulet mariné pané',
-      'Sauce fromagère',
-      'Tortilla artisanale',
-      'Frites maison',
+      'Tenders panés',
+      'Viande hachée épicée',
+      'Sauce fromagère maison',
+      'Frites',
       'Sauce algérienne'
     ],
   ),
   MenuItemModel(
-    id: 'ff_4',
-    name: 'Loaded Fries Cheddar & Bacon',
+    id: 'sw_4',
+    name: 'Panini Gourmand Mozzarella, Pesto & Tomate',
     description:
-        'Frites fraîches coupées main garnies de sauce cheddar fondue, brisures de bacon grillé croustillant et ciboulette fraîche.',
-    price: 6.20,
-    category: MenuCategory.fastFood,
+        'Pain ciabatta artisanal toasté et strié, mozzarella fior di latte fondante, pesto génois au basilic frais et tomates confites au soleil.',
+    price: 7.20,
+    category: MenuCategory.sandwiches,
     imageUrl:
-        'https://images.unsplash.com/photo-1585109649139-366815a0d713?auto=format&fit=crop&w=800&q=80',
+        'https://images.unsplash.com/photo-1509722747041-616f39b57569?auto=format&fit=crop&w=800&q=80',
     rating: 4.6,
-    reviewsCount: 54,
-    prepTime: '8-10 min',
-    calories: 540,
+    reviewsCount: 62,
+    isVegetarian: true,
+    prepTime: '7 min',
+    calories: 490,
     ingredients: [
-      'Pommes de terre fraîches',
-      'Cheddar affiné',
-      'Bacon fumé',
-      'Ciboulette'
+      'Pain Ciabatta',
+      'Mozzarella fondante',
+      'Pesto au basilic DOP',
+      'Tomates séchées'
     ],
   ),
 
-  // --- PLATS (DISHES) ---
+  // --- PLATS (PLATES) ---
   MenuItemModel(
-    id: 'di_1',
+    id: 'pl_1',
     name: 'Pavé de Saumon Rôti & Légumes Croquants',
     description:
-        'Pavé de saumon frais poêlé à la perfection, purée maison onctueuse à l\'ail doux, légumes glacés de saison et émulsion citronnée.',
+        'Pavé de saumon frais poêlé à la perfection, purée maison onctueuse à l\'ail doux, asperges et carottes glacées avec émulsion citronnée.',
     price: 15.90,
-    category: MenuCategory.dishes,
+    category: MenuCategory.plates,
     imageUrl:
         'https://images.unsplash.com/photo-1467003909585-2f8a72700288?auto=format&fit=crop&w=800&q=80',
     rating: 4.9,
@@ -223,19 +255,19 @@ const List<MenuItemModel> sampleMenuItems = [
     prepTime: '20-25 min',
     calories: 520,
     ingredients: [
-      'Saumon de l\'Atlantique',
+      'Saumon Atlantique',
       'Pommes de terre grenailles',
       'Asperges vertes',
       'Beurre blanc citronné'
     ],
   ),
   MenuItemModel(
-    id: 'di_2',
+    id: 'pl_2',
     name: 'Couscous Royal Traditionnel',
     description:
-        'Semoule fine et légère cuite à la vapeur, mijoté de légumes fondants, agneau tendre mijoté, poulet rôti et merguez artisanale aux épices douces.',
+        'Semoule fine cuite à la vapeur, mijoté de légumes fondants, agneau tendre confit, poulet fermier rôti et merguez artisanale aux épices.',
     price: 16.50,
-    category: MenuCategory.dishes,
+    category: MenuCategory.plates,
     imageUrl:
         'https://images.unsplash.com/photo-1541518763669-27fef04b14ea?auto=format&fit=crop&w=800&q=80',
     rating: 4.9,
@@ -253,12 +285,12 @@ const List<MenuItemModel> sampleMenuItems = [
     ],
   ),
   MenuItemModel(
-    id: 'di_3',
-    name: 'Tagliatelles Fraîches aux Truffes',
+    id: 'pl_3',
+    name: 'Tagliatelles Fraîches aux Truffes & Parmesan',
     description:
-        'Pâtes fraîches maison enrobées d\'une crème onctueuse de parmesan Reggiano 24 mois, brisures de truffe d\'été et copeaux de truffe.',
+        'Pâtes fraîches maison enrobées d\'une crème onctueuse de parmesan Reggiano 24 mois, brisures de truffe d\'été et poivre noir concassé.',
     price: 14.80,
-    category: MenuCategory.dishes,
+    category: MenuCategory.plates,
     imageUrl:
         'https://images.unsplash.com/photo-1621996346565-e3d5d6281788?auto=format&fit=crop&w=800&q=80',
     rating: 4.8,
@@ -274,12 +306,12 @@ const List<MenuItemModel> sampleMenuItems = [
     ],
   ),
   MenuItemModel(
-    id: 'di_4',
+    id: 'pl_4',
     name: 'Entrecôte Grillée Sauce Poivre Vert',
     description:
         'Pièce de bœuf tendre 250g saisie sur grill au feu de bois, frites maison croustillantes et sauce crémeuse au poivre vert de Madagascar.',
     price: 17.50,
-    category: MenuCategory.dishes,
+    category: MenuCategory.plates,
     imageUrl:
         'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80',
     rating: 4.7,
@@ -470,9 +502,9 @@ const List<MenuItemModel> sampleMenuItems = [
   ),
   MenuItemModel(
     id: 'ds_2',
-    name: 'Fondant Cœur Coulant Chocolat Noir & Glace Vanille',
+    name: 'Fondant Cœur Coulant Chocolat Noir & Glace',
     description:
-        'Gâteau au chocolat noir Valrhona 70% au cœur délicieusement coulant, servi tiède accompagné d\'une boule de glace vanille Bourbon artisanale.',
+        'Gâteau au chocolat noir Valrhona 70% au cœur délicieusement coulant, servi tiède accompagné d\'une boule de glace vanille Bourbon.',
     price: 6.50,
     category: MenuCategory.desserts,
     imageUrl:
@@ -513,7 +545,7 @@ const List<MenuItemModel> sampleMenuItems = [
     id: 'ds_4',
     name: 'Crêpe Crousti-Nutella & Banane Flambée',
     description:
-        'Crêpe fine bretonne dorée minute au beurre demi-sel, tartinée de pâte à tartiner chocolat noisette, rondelles de banane et éclats de noisettes grillées.',
+        'Crêpe fine bretonne dorée minute au beurre demi-sel, tartinée de pâte à tartiner chocolat noisette, rondelles de banane et éclats de noisettes.',
     price: 5.00,
     category: MenuCategory.desserts,
     imageUrl:

@@ -9,7 +9,7 @@ class CatalogPage extends StatefulWidget {
 }
 
 class _CatalogPageState extends State<CatalogPage> {
-  // Category selection (null means "All")
+  // Currently selected category (null = Showing Category Banners Hub)
   MenuCategory? _selectedCategory;
 
   // Search & Filter state
@@ -94,7 +94,11 @@ class _CatalogPageState extends State<CatalogPage> {
     return total;
   }
 
-  // Filtered menu items
+  List<MenuItemModel> _getItemsForCategory(MenuCategory cat) {
+    return sampleMenuItems.where((item) => item.category == cat).toList();
+  }
+
+  // Filtered menu items for the current active view
   List<MenuItemModel> get _filteredItems {
     return sampleMenuItems.where((item) {
       // Category filter
@@ -137,33 +141,25 @@ class _CatalogPageState extends State<CatalogPage> {
       });
   }
 
-  // --- UI Views ---
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFE65100);
-    final filtered = _filteredItems;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9FB),
       appBar: _buildAppBar(primaryColor),
       body: Column(
         children: [
-          // Search & Filter Header
-          _buildSearchAndFilters(primaryColor),
+          // Top Navigation Menu with category name buttons
+          _buildTopCategoryButtonsMenu(primaryColor),
 
-          // Horizontal Category Tabs
-          _buildCategorySelector(primaryColor),
-
-          // Active filter summary & layout toggle bar
-          _buildBarHeader(filtered.length),
-
-          // Main Menu Items list/grid
+          // Main View: Either Category Banners Hub or Selected Category Products View
           Expanded(
-            child: filtered.isEmpty
-                ? _buildEmptyState(primaryColor)
-                : _isGridView
-                    ? _buildGridView(filtered, primaryColor)
-                    : _buildListView(filtered, primaryColor),
+            child: _searchQuery.isNotEmpty
+                ? _buildSearchResultsView(primaryColor)
+                : _selectedCategory == null
+                    ? _buildCategoryBannersHub(primaryColor)
+                    : _buildCategoryProductsView(_selectedCategory!, primaryColor),
           ),
         ],
       ),
@@ -173,36 +169,52 @@ class _CatalogPageState extends State<CatalogPage> {
 
   AppBar _buildAppBar(Color primaryColor) {
     return AppBar(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
-            'Menu Numérique',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-              color: Color(0xFF263238),
+      elevation: 0,
+      backgroundColor: Colors.white,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
             ),
+            child: const Icon(Icons.restaurant, color: Color(0xFFE65100), size: 22),
           ),
-          Text(
-            'Restaurant Le Délice • En ligne',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.normal,
-              color: Colors.black54,
-            ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                'Menu Numérique',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Color(0xFF263238),
+                ),
+              ),
+              Text(
+                'Commandez en toute simplicité',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.black54,
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      elevation: 0,
-      backgroundColor: Colors.white,
       actions: [
-        // Cart icon button with live badge
+        IconButton(
+          icon: const Icon(Icons.person_outline, color: Color(0xFF263238), size: 26),
+          onPressed: () => Navigator.of(context).pushNamed('/login'),
+          tooltip: 'Mon Compte / Connexion',
+        ),
         Stack(
           alignment: Alignment.center,
           children: [
             IconButton(
-              icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF263238), size: 28),
+              icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF263238), size: 26),
               onPressed: _openCartModal,
               tooltip: 'Consulter le panier',
             ),
@@ -216,10 +228,7 @@ class _CatalogPageState extends State<CatalogPage> {
                     color: Color(0xFFE65100),
                     shape: BoxShape.circle,
                   ),
-                  constraints: const BoxConstraints(
-                    minWidth: 18,
-                    minHeight: 18,
-                  ),
+                  constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                   child: Text(
                     '$_totalCartItems',
                     style: const TextStyle(
@@ -238,14 +247,16 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  Widget _buildSearchAndFilters(Color primaryColor) {
+  /// Top Menu Bar with buttons of the names for all categories for easy instant access
+  Widget _buildTopCategoryButtonsMenu(Color primaryColor) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
       child: Column(
         children: [
-          // Search input field
+          // Search input bar
           Container(
+            height: 44,
             decoration: BoxDecoration(
               color: const Color(0xFFF1F3F5),
               borderRadius: BorderRadius.circular(14),
@@ -258,12 +269,12 @@ class _CatalogPageState extends State<CatalogPage> {
                 });
               },
               decoration: InputDecoration(
-                hintText: 'Rechercher un plat, ingrédient, boisson...',
-                hintStyle: const TextStyle(color: Colors.black38, fontSize: 14),
-                prefixIcon: const Icon(Icons.search, color: Color(0xFFE65100)),
+                hintText: 'Rechercher un plat, sandwich, café, boisson...',
+                hintStyle: const TextStyle(color: Colors.black38, fontSize: 13),
+                prefixIcon: const Icon(Icons.search, color: Color(0xFFE65100), size: 20),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.close, size: 20, color: Colors.black45),
+                        icon: const Icon(Icons.close, size: 18, color: Colors.black45),
                         onPressed: () {
                           _searchController.clear();
                           setState(() {
@@ -273,65 +284,52 @@ class _CatalogPageState extends State<CatalogPage> {
                       )
                     : null,
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
             ),
           ),
           const SizedBox(height: 10),
 
-          // Fast toggle chips (Popular, Vegetarian, Sort)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
+          // Horizontal row of category name buttons
+          SizedBox(
+            height: 42,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
               children: [
-                FilterChip(
-                  label: const Text('🔥 Populaires'),
-                  selected: _onlyPopular,
-                  selectedColor: primaryColor.withValues(alpha: 0.15),
-                  checkmarkColor: primaryColor,
-                  labelStyle: TextStyle(
-                    fontSize: 12,
-                    fontWeight: _onlyPopular ? FontWeight.bold : FontWeight.normal,
-                    color: _onlyPopular ? primaryColor : Colors.black87,
-                  ),
-                  onSelected: (selected) {
+                // "Toutes les catégories / Accueil" button
+                _buildCategoryMenuButton(
+                  title: '✨ Toutes les catégories',
+                  isSelected: _selectedCategory == null && _searchQuery.isEmpty,
+                  onTap: () {
                     setState(() {
-                      _onlyPopular = selected;
+                      _selectedCategory = null;
+                      _searchQuery = '';
+                      _searchController.clear();
                     });
                   },
+                  primaryColor: primaryColor,
                 ),
                 const SizedBox(width: 8),
-                FilterChip(
-                  label: const Text('🥗 Végétarien'),
-                  selected: _onlyVegetarian,
-                  selectedColor: Colors.green.withValues(alpha: 0.15),
-                  checkmarkColor: Colors.green,
-                  labelStyle: TextStyle(
-                    fontSize: 12,
-                    fontWeight: _onlyVegetarian ? FontWeight.bold : FontWeight.normal,
-                    color: _onlyVegetarian ? Colors.green[800] : Colors.black87,
-                  ),
-                  onSelected: (selected) {
-                    setState(() {
-                      _onlyVegetarian = selected;
-                    });
-                  },
-                ),
-                const SizedBox(width: 8),
-                ActionChip(
-                  avatar: const Icon(Icons.sort, size: 16, color: Color(0xFFE65100)),
-                  label: Text(
-                    _sortBy == 1
-                        ? 'Prix ↑'
-                        : _sortBy == 2
-                            ? 'Prix ↓'
-                            : _sortBy == 3
-                                ? 'Note ⭐'
-                                : 'Trier',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  onPressed: _showSortDialog,
-                ),
+
+                // Specific Category Buttons (Sandwiches, Plates, Coffee, Drinks, Desserts)
+                ...MenuCategory.values.map((cat) {
+                  final isSelected = _selectedCategory == cat && _searchQuery.isEmpty;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _buildCategoryMenuButton(
+                      title: '${cat.emoji} ${cat.label}',
+                      isSelected: isSelected,
+                      onTap: () {
+                        setState(() {
+                          _selectedCategory = cat;
+                          _searchQuery = '';
+                          _searchController.clear();
+                        });
+                      },
+                      primaryColor: primaryColor,
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -340,106 +338,606 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  Widget _buildCategorySelector(Color primaryColor) {
-    final categories = [
-      null, // "Tous"
-      ...MenuCategory.values,
-    ];
-
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.only(bottom: 12),
-      child: SizedBox(
-        height: 48,
-        child: ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          scrollDirection: Axis.horizontal,
-          itemCount: categories.length,
-          separatorBuilder: (_, _) => const SizedBox(width: 10),
-          itemBuilder: (context, index) {
-            final cat = categories[index];
-            final isSelected = _selectedCategory == cat;
-            final label = cat == null ? '✨ Tous' : '${cat.emoji} ${cat.label}';
-
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedCategory = cat;
-                });
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 250),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: isSelected ? primaryColor : const Color(0xFFF4F5F7),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: primaryColor.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [],
-                ),
-                child: Center(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF455A64),
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                      fontSize: 13,
-                    ),
+  Widget _buildCategoryMenuButton({
+    required String title,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Color primaryColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor : const Color(0xFFF1F3F5),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.35),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
-                ),
-              ),
-            );
-          },
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: isSelected ? Colors.white : const Color(0xFF37474F),
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildBarHeader(int count) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            '$count article${count > 1 ? 's' : ''} disponible${count > 1 ? 's' : ''}',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: Colors.black54,
-            ),
+  /// Category Banners Hub: displays large, appetizing banners for each category
+  Widget _buildCategoryBannersHub(Color primaryColor) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 90),
+      children: [
+        // Intro Banner / Subtitle
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: primaryColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
           ),
-          Row(
-            children: [
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.grid_view,
-                  size: 20,
-                  color: _isGridView ? const Color(0xFFE65100) : Colors.black38,
+          child: Row(
+            children: const [
+              Icon(Icons.touch_app, color: Color(0xFFE65100), size: 22),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Cliquez sur une bannière de catégorie pour explorer ses produits !',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFE65100),
+                  ),
                 ),
-                onPressed: () => setState(() => _isGridView = true),
-                tooltip: 'Affichage en grille',
-              ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.view_list,
-                  size: 22,
-                  color: !_isGridView ? const Color(0xFFE65100) : Colors.black38,
-                ),
-                onPressed: () => setState(() => _isGridView = false),
-                tooltip: 'Affichage en liste',
               ),
             ],
           ),
-        ],
+        ),
+        const SizedBox(height: 16),
+
+        // List of big Category Banners
+        ...MenuCategory.values.map((cat) {
+          final count = _getItemsForCategory(cat).length;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _buildCategoryBannerCard(cat, count, primaryColor),
+          );
+        }),
+
+        const SizedBox(height: 10),
+
+        // Popular highlights section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Text(
+              '🔥 Coups de cœur du chef',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF263238),
+              ),
+            ),
+            Text(
+              'Les plus commandés',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Horizontal popular items carousel
+        SizedBox(
+          height: 210,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: sampleMenuItems.where((it) => it.isPopular).length,
+            separatorBuilder: (_, _) => const SizedBox(width: 14),
+            itemBuilder: (context, index) {
+              final item = sampleMenuItems.where((it) => it.isPopular).toList()[index];
+              return _buildPopularMiniCard(item, primaryColor);
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Big Category Banner Card
+  Widget _buildCategoryBannerCard(MenuCategory cat, int count, Color primaryColor) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedCategory = cat;
+        });
+      },
+      child: Container(
+        height: 160,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background Image
+            _buildSafeImage(cat.bannerImageUrl, cat),
+
+            // Gradient Overlay for perfect text contrast
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.15),
+                    Colors.black.withValues(alpha: 0.85),
+                  ],
+                ),
+              ),
+            ),
+
+            // Banner Content
+            Padding(
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Top badge
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: primaryColor,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          '$count produits',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          children: const [
+                            Text(
+                              'Consulter',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            SizedBox(width: 4),
+                            Icon(Icons.arrow_forward, color: Colors.white, size: 14),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  // Bottom Title & Subtitle
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${cat.emoji} ${cat.label}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        cat.subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12,
+                          height: 1.25,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Category Products View: shows all items inside the chosen category
+  Widget _buildCategoryProductsView(MenuCategory cat, Color primaryColor) {
+    final items = _filteredItems;
+
+    return Column(
+      children: [
+        // Category Header Strip with back button
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedCategory = null;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.arrow_back_ios, size: 14, color: Color(0xFFE65100)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Toutes les catégories',
+                            style: TextStyle(
+                              color: Color(0xFFE65100),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${items.length} article${items.length > 1 ? 's' : ''}',
+                    style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+
+              // Category mini banner summary
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9F9FB),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Text(cat.emoji, style: const TextStyle(fontSize: 28)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            cat.label,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Color(0xFF263238),
+                            ),
+                          ),
+                          Text(
+                            cat.subtitle,
+                            style: const TextStyle(fontSize: 11, color: Colors.black54),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              // Filter & Layout Toggle Row
+              Row(
+                children: [
+                  FilterChip(
+                    label: const Text('🔥 Populaires'),
+                    selected: _onlyPopular,
+                    selectedColor: primaryColor.withValues(alpha: 0.15),
+                    checkmarkColor: primaryColor,
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      fontWeight: _onlyPopular ? FontWeight.bold : FontWeight.normal,
+                      color: _onlyPopular ? primaryColor : Colors.black87,
+                    ),
+                    onSelected: (selected) => setState(() => _onlyPopular = selected),
+                  ),
+                  const SizedBox(width: 8),
+                  FilterChip(
+                    label: const Text('🥗 Végé'),
+                    selected: _onlyVegetarian,
+                    selectedColor: Colors.green.withValues(alpha: 0.15),
+                    checkmarkColor: Colors.green,
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      fontWeight: _onlyVegetarian ? FontWeight.bold : FontWeight.normal,
+                      color: _onlyVegetarian ? Colors.green[800] : Colors.black87,
+                    ),
+                    onSelected: (selected) => setState(() => _onlyVegetarian = selected),
+                  ),
+                  const SizedBox(width: 8),
+                  ActionChip(
+                    avatar: const Icon(Icons.sort, size: 14, color: Color(0xFFE65100)),
+                    label: Text(
+                      _sortBy == 1
+                          ? 'Prix ↑'
+                          : _sortBy == 2
+                              ? 'Prix ↓'
+                              : _sortBy == 3
+                                  ? 'Note ⭐'
+                                  : 'Trier',
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                    onPressed: _showSortDialog,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      Icons.grid_view,
+                      size: 20,
+                      color: _isGridView ? primaryColor : Colors.black38,
+                    ),
+                    onPressed: () => setState(() => _isGridView = true),
+                    tooltip: 'Grille',
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: Icon(
+                      Icons.view_list,
+                      size: 22,
+                      color: !_isGridView ? primaryColor : Colors.black38,
+                    ),
+                    onPressed: () => setState(() => _isGridView = false),
+                    tooltip: 'Liste',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Product items list or grid
+        Expanded(
+          child: items.isEmpty
+              ? _buildEmptyState(primaryColor)
+              : _isGridView
+                  ? _buildGridView(items, primaryColor)
+                  : _buildListView(items, primaryColor),
+        ),
+      ],
+    );
+  }
+
+  /// Search Results View across all categories
+  Widget _buildSearchResultsView(Color primaryColor) {
+    final results = _filteredItems;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+          child: Text(
+            '${results.length} résultat${results.length > 1 ? 's' : ''} pour "$_searchQuery"',
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+        ),
+        Expanded(
+          child: results.isEmpty
+              ? _buildEmptyState(primaryColor)
+              : _isGridView
+                  ? _buildGridView(results, primaryColor)
+                  : _buildListView(results, primaryColor),
+        ),
+      ],
+    );
+  }
+
+  void _showSortDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Trier les articles',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.star_outline),
+                title: const Text('Par défaut'),
+                trailing: _sortBy == 0 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
+                onTap: () {
+                  setState(() => _sortBy = 0);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.arrow_upward),
+                title: const Text('Prix : du moins cher au plus cher'),
+                trailing: _sortBy == 1 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
+                onTap: () {
+                  setState(() => _sortBy = 1);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.arrow_downward),
+                title: const Text('Prix : du plus cher au moins cher'),
+                trailing: _sortBy == 2 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
+                onTap: () {
+                  setState(() => _sortBy = 2);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.star, color: Colors.amber),
+                title: const Text('Meilleures notes'),
+                trailing: _sortBy == 3 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
+                onTap: () {
+                  setState(() => _sortBy = 3);
+                  Navigator.pop(context);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPopularMiniCard(MenuItemModel item, Color primaryColor) {
+    return GestureDetector(
+      onTap: () => _openItemDetail(item),
+      child: Container(
+        width: 150,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 5,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  _buildSafeImage(item.imageUrl, item.category),
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.star, color: Colors.amber, size: 10),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${item.rating}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      item.name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                        color: Color(0xFF263238),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          '${item.price.toStringAsFixed(2)} €',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => _addToCart(item),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: primaryColor,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.add, color: Colors.white, size: 14),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -457,7 +955,6 @@ class _CatalogPageState extends State<CatalogPage> {
       itemBuilder: (context, index) {
         final item = items[index];
         final inCartQty = _cart[item.id] ?? 0;
-
         return _buildGridCard(item, inCartQty, primaryColor);
       },
     );
@@ -482,14 +979,12 @@ class _CatalogPageState extends State<CatalogPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image Stack with badges
             Expanded(
               flex: 5,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   _buildSafeImage(item.imageUrl, item.category),
-                  // Rating Badge
                   Positioned(
                     top: 8,
                     left: 8,
@@ -516,7 +1011,6 @@ class _CatalogPageState extends State<CatalogPage> {
                       ),
                     ),
                   ),
-                  // Popular / Veggie Badge
                   if (item.isPopular || item.isVegetarian)
                     Positioned(
                       top: 8,
@@ -540,8 +1034,6 @@ class _CatalogPageState extends State<CatalogPage> {
                 ],
               ),
             ),
-
-            // Content details
             Expanded(
               flex: 6,
               child: Padding(
@@ -584,8 +1076,6 @@ class _CatalogPageState extends State<CatalogPage> {
                         ),
                       ],
                     ),
-
-                    // Price and Add Button
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -685,7 +1175,6 @@ class _CatalogPageState extends State<CatalogPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Image
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
                   child: SizedBox(
@@ -695,8 +1184,6 @@ class _CatalogPageState extends State<CatalogPage> {
                   ),
                 ),
                 const SizedBox(width: 12),
-
-                // Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -833,7 +1320,7 @@ class _CatalogPageState extends State<CatalogPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Essayez de modifier vos filtres ou de taper un autre mot-clé dans la recherche.',
+              'Essayez de modifier vos filtres ou de sélectionner une autre catégorie.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.black54, fontSize: 13),
             ),
@@ -848,7 +1335,7 @@ class _CatalogPageState extends State<CatalogPage> {
                   _onlyVegetarian = false;
                 });
               },
-              child: const Text('Réinitialiser les filtres'),
+              child: const Text('Retour aux catégories'),
             ),
           ],
         ),
@@ -932,7 +1419,6 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  // --- Safe Image loader with fallbacks ---
   Widget _buildSafeImage(String url, MenuCategory cat) {
     return Image.network(
       url,
@@ -964,69 +1450,6 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  // --- Sort Dialog ---
-  void _showSortDialog() {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Trier les articles',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.star_outline),
-                title: const Text('Par défaut'),
-                trailing: _sortBy == 0 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
-                onTap: () {
-                  setState(() => _sortBy = 0);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.arrow_upward),
-                title: const Text('Prix : du moins cher au plus cher'),
-                trailing: _sortBy == 1 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
-                onTap: () {
-                  setState(() => _sortBy = 1);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.arrow_downward),
-                title: const Text('Prix : du plus cher au moins cher'),
-                trailing: _sortBy == 2 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
-                onTap: () {
-                  setState(() => _sortBy = 2);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.star, color: Colors.amber),
-                title: const Text('Meilleures notes des clients'),
-                trailing: _sortBy == 3 ? const Icon(Icons.check, color: Color(0xFFE65100)) : null,
-                onTap: () {
-                  setState(() => _sortBy = 3);
-                  Navigator.pop(context);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // --- Item Detail Bottom Sheet ---
   void _openItemDetail(MenuItemModel item) {
     int localQty = _cart[item.id] ?? 1;
 
@@ -1047,7 +1470,6 @@ class _CatalogPageState extends State<CatalogPage> {
               ),
               child: Column(
                 children: [
-                  // Image & Close Button
                   Stack(
                     children: [
                       SizedBox(
@@ -1090,8 +1512,6 @@ class _CatalogPageState extends State<CatalogPage> {
                       ),
                     ],
                   ),
-
-                  // Detail Body
                   Expanded(
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.all(20),
@@ -1122,8 +1542,6 @@ class _CatalogPageState extends State<CatalogPage> {
                             ],
                           ),
                           const SizedBox(height: 8),
-
-                          // Rating and stats
                           Row(
                             children: [
                               const Icon(Icons.star, color: Colors.amber, size: 16),
@@ -1152,7 +1570,6 @@ class _CatalogPageState extends State<CatalogPage> {
                             ],
                           ),
                           const Divider(height: 28),
-
                           const Text(
                             'Description',
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
@@ -1167,7 +1584,6 @@ class _CatalogPageState extends State<CatalogPage> {
                             ),
                           ),
                           const SizedBox(height: 16),
-
                           if (item.ingredients.isNotEmpty) ...[
                             const Text(
                               'Ingrédients & Recette',
@@ -1193,7 +1609,6 @@ class _CatalogPageState extends State<CatalogPage> {
                             ),
                             const SizedBox(height: 16),
                           ],
-
                           const Text(
                             'Instructions spéciales (optionnel)',
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
@@ -1216,8 +1631,6 @@ class _CatalogPageState extends State<CatalogPage> {
                       ),
                     ),
                   ),
-
-                  // Bottom Action Bar
                   Container(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
                     decoration: BoxDecoration(
@@ -1232,7 +1645,6 @@ class _CatalogPageState extends State<CatalogPage> {
                     ),
                     child: Row(
                       children: [
-                        // Quantity stepper
                         Container(
                           decoration: BoxDecoration(
                             color: const Color(0xFFF1F3F5),
@@ -1262,8 +1674,6 @@ class _CatalogPageState extends State<CatalogPage> {
                           ),
                         ),
                         const SizedBox(width: 14),
-
-                        // Add to cart CTA
                         Expanded(
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
@@ -1306,7 +1716,6 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  // --- Cart Modal Summary ---
   void _openCartModal() {
     showModalBottomSheet(
       context: context,
@@ -1331,7 +1740,6 @@ class _CatalogPageState extends State<CatalogPage> {
               ),
               child: Column(
                 children: [
-                  // Header
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                     child: Row(
@@ -1355,8 +1763,6 @@ class _CatalogPageState extends State<CatalogPage> {
                     ),
                   ),
                   const Divider(height: 1),
-
-                  // Cart Items
                   Expanded(
                     child: cartItems.isEmpty
                         ? const Center(
@@ -1405,7 +1811,6 @@ class _CatalogPageState extends State<CatalogPage> {
                                       ],
                                     ),
                                   ),
-                                  // Stepper
                                   Row(
                                     children: [
                                       IconButton(
@@ -1430,8 +1835,6 @@ class _CatalogPageState extends State<CatalogPage> {
                             },
                           ),
                   ),
-
-                  // Checkout Summary
                   if (cartItems.isNotEmpty)
                     Container(
                       padding: const EdgeInsets.all(20),

@@ -29,7 +29,7 @@ class CommandeApp extends StatelessWidget {
           foregroundColor: Color(0xFF263238),
         ),
       ),
-      initialRoute: '/',
+      initialRoute: '/catalog',
       routes: {
         '/': (context) => const RegisterPage(),
         '/login': (context) => const LoginPage(),
