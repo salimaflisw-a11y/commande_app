@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/register_page.dart';
+import 'screens/login_page.dart';
+import 'screens/catalog_page.dart';
 
 void main() {
   runApp(const CommandeApp());
@@ -27,7 +29,12 @@ class CommandeApp extends StatelessWidget {
           foregroundColor: Color(0xFF263238),
         ),
       ),
-      home: const RegisterPage(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const RegisterPage(),
+        '/login': (context) => const LoginPage(),
+        '/catalog': (context) => const CatalogPage(),
+      },
     );
   }
 }

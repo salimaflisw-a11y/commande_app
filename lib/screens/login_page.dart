@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'register_page.dart';
+import 'catalog_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -44,6 +45,12 @@ class _LoginPageState extends State<LoginPage> {
       SnackBar(
         content: Text('Connexion réussie pour ${_emailController.text} !'),
         backgroundColor: Colors.green,
+      ),
+    );
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (context) => const CatalogPage(),
       ),
     );
   }
@@ -276,6 +283,24 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CatalogPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.restaurant_menu, color: primaryColor),
+                  label: const Text(
+                    'Consulter le menu sans compte',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),

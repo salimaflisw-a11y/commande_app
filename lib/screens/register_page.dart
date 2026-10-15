@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_page.dart';
+import 'catalog_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -103,6 +104,11 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               onPressed: () {
                 Navigator.of(context).pop();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const CatalogPage(),
+                  ),
+                );
               },
               child: const Text('Commencer à commander'),
             ),
@@ -413,6 +419,24 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 16),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CatalogPage(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.restaurant_menu, color: primaryColor),
+                  label: const Text(
+                    'Consulter le menu sans compte',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
               ],
