@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'screens/register_page.dart';
 import 'screens/login_page.dart';
 import 'screens/catalog_page.dart';
+import 'screens/order_checkout_page.dart';
+import 'screens/client_orders_page.dart';
 
 void main() {
   runApp(const CommandeApp());
@@ -34,6 +36,8 @@ class CommandeApp extends StatelessWidget {
         '/': (context) => const RegisterPage(),
         '/login': (context) => const LoginPage(),
         '/catalog': (context) => const CatalogPage(),
+        '/checkout': (context) => const OrderCheckoutPage(),
+        '/orders': (context) => const ClientOrdersPage(),
       },
     );
   }

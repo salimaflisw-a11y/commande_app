@@ -1,12 +1,12 @@
 enum MenuCategory {
   sandwiches(
-    'Sandwiches',
-    '🥪',
-    'Burgers gourmets, tacos savoureux, club-sandwiches & paninis',
+    'Fast-Food',
+    '🍔',
+    'Burgers gourmets, tacos, frites & snacks croustillants',
     'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80',
   ),
   plates(
-    'Plats / Plates',
+    'Plats',
     '🍲',
     'Plats mijotés maison, viandes grillées, poissons nobles & pâtes',
     'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=1200&q=80',
@@ -18,9 +18,9 @@ enum MenuCategory {
     'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=1200&q=80',
   ),
   drinks(
-    'Boissons / Drinks',
+    'Boissons',
     '🥤',
-    'Cocktails sans alcool, jus pressés minute & smoothies vitaminés',
+    'Cocktails sans alcool, jus pressés minute & sodas frais',
     'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=1200&q=80',
   ),
   desserts(

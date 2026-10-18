@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
+import '../services/cart_service.dart';
+import '../widgets/cart_sheet.dart';
+import 'category_products_page.dart';
+import 'client_orders_page.dart';
 
 class CatalogPage extends StatefulWidget {
   const CatalogPage({super.key});
@@ -43,6 +47,87 @@ class _CatalogPageState extends State<CatalogPage> {
           ),
         ],
       ),
+      bottomNavigationBar: ListenableBuilder(
+        listenable: CartService(),
+        builder: (context, _) {
+          final count = CartService().itemCount;
+          if (count == 0) return const SizedBox.shrink();
+          return Container(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              10,
+              16,
+              10 + MediaQuery.of(context).padding.bottom,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
+            ),
+            child: ElevatedButton(
+              onPressed: () => CartSheet.show(
+                context,
+                primaryColor: primaryColor,
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 3,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '$count',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const Row(
+                    children: [
+                      Icon(Icons.shopping_bag_outlined, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Voir le panier',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '${CartService().totalAmount.toStringAsFixed(2)} €',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -84,6 +169,53 @@ class _CatalogPageState extends State<CatalogPage> {
         ],
       ),
       actions: [
+        ListenableBuilder(
+          listenable: CartService(),
+          builder: (context, _) {
+            final count = CartService().itemCount;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF263238), size: 26),
+                  tooltip: 'Voir le panier',
+                  onPressed: () => CartSheet.show(context, primaryColor: primaryColor),
+                ),
+                if (count > 0)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.redAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                      child: Text(
+                        '$count',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        IconButton(
+          icon: const Icon(Icons.receipt_long_outlined, color: Color(0xFF263238), size: 24),
+          tooltip: 'Mes Commandes',
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ClientOrdersPage()),
+            );
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.person_outline, color: Color(0xFF263238), size: 26),
           onPressed: () => Navigator.of(context).pushNamed('/login'),
@@ -130,6 +262,11 @@ class _CatalogPageState extends State<CatalogPage> {
                     setState(() {
                       _selectedCategory = cat;
                     });
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CategoryProductsPage(category: cat),
+                      ),
+                    );
                   },
                   primaryColor: primaryColor,
                 ),
@@ -194,11 +331,21 @@ class _CatalogPageState extends State<CatalogPage> {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Background Image
-          _buildSafeImage(cat.bannerImageUrl, cat),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => CategoryProductsPage(category: cat),
+              ),
+            );
+          },
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Background Image
+              _buildSafeImage(cat.bannerImageUrl, cat),
 
           // Gradient Overlay
           Container(
@@ -249,7 +396,12 @@ class _CatalogPageState extends State<CatalogPage> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(20),
                         onTap: () {
-                          // Takes you nowhere
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  CategoryProductsPage(category: cat),
+                            ),
+                          );
                         },
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -304,6 +456,8 @@ class _CatalogPageState extends State<CatalogPage> {
             ),
           ),
         ],
+          ),
+        ),
       ),
     );
   }
