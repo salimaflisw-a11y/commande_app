@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import 'login_page.dart';
 import 'catalog_page.dart';
 
@@ -58,8 +59,13 @@ class _RegisterPageState extends State<RegisterPage> {
       _isLoading = true;
     });
 
-    // Simulate API registration delay
-    await Future.delayed(const Duration(seconds: 2));
+    await AuthService().register(
+      name: _nameController.text.trim(),
+      email: _emailController.text.trim(),
+      phone: _phoneController.text.trim(),
+      address: _addressController.text.trim(),
+      password: _passwordController.text,
+    );
 
     if (!mounted) return;
 

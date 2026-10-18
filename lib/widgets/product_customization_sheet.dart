@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
 import '../models/cart_item_model.dart';
 import '../services/cart_service.dart';
+import '../services/auth_service.dart';
+import 'auth_popup.dart';
 
 class AvailableSupplement {
   final String id;
@@ -245,6 +247,22 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
   }
 
   void _onAddToCart() {
+    if (!AuthService().isLoggedIn) {
+      AuthPopup.show(
+        context,
+        primaryColor: widget.primaryColor,
+        customMessage:
+            'Pour ajouter "${widget.item.name}" à votre panier, veuillez vous connecter ou créer un compte client.',
+        onSuccess: () {
+          _performAddToCart();
+        },
+      );
+      return;
+    }
+    _performAddToCart();
+  }
+
+  void _performAddToCart() {
     final removed = widget.item.ingredients
         .where((ing) => !_selectedBaseIngredients.contains(ing))
         .toList();

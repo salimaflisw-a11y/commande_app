@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
 import '../services/cart_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/product_customization_sheet.dart';
 import '../widgets/cart_sheet.dart';
+import '../widgets/auth_popup.dart';
 import 'client_orders_page.dart';
 
 class CategoryProductsPage extends StatelessWidget {
@@ -317,6 +319,22 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
+  void _handleAddToCart(BuildContext context) {
+    if (!AuthService().isLoggedIn) {
+      AuthPopup.show(
+        context,
+        primaryColor: primaryColor,
+        customMessage:
+            'Pour ajouter "${item.name}" à votre panier, veuillez vous connecter ou créer un compte client.',
+        onSuccess: () {
+          _openCustomizationPopup(context);
+        },
+      );
+      return;
+    }
+    _openCustomizationPopup(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -521,7 +539,7 @@ class _ProductCard extends StatelessWidget {
 
                     // [Add to pannier] button
                     ElevatedButton.icon(
-                      onPressed: () => _openCustomizationPopup(context),
+                      onPressed: () => _handleAddToCart(context),
                       icon: const Icon(
                         Icons.add_shopping_cart_rounded,
                         size: 16,

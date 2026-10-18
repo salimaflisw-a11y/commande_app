@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'catalog_page.dart';
 
@@ -33,7 +34,10 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    await Future.delayed(const Duration(seconds: 1));
+    await AuthService().login(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
 
     if (!mounted) return;
 
@@ -43,7 +47,7 @@ class _LoginPageState extends State<LoginPage> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Connexion réussie pour ${_emailController.text} !'),
+        content: Text('Connexion réussie pour ${AuthService().currentUser?.name} !'),
         backgroundColor: Colors.green,
       ),
     );

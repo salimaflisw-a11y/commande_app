@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/cart_service.dart';
+import '../services/auth_service.dart';
 import '../screens/order_checkout_page.dart';
+import 'auth_popup.dart';
 
 class CartSheet extends StatelessWidget {
   final Color primaryColor;
@@ -417,6 +419,23 @@ class CartSheet extends StatelessWidget {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () {
+                            if (!AuthService().isLoggedIn) {
+                              AuthPopup.show(
+                                context,
+                                primaryColor: primaryColor,
+                                customMessage:
+                                    'Pour valider votre commande, veuillez vous connecter ou créer un compte client.',
+                                onSuccess: () {
+                                  Navigator.of(context).pop();
+                                  Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (_) => const OrderCheckoutPage(),
+                                    ),
+                                  );
+                                },
+                              );
+                              return;
+                            }
                             Navigator.of(context).pop();
                             Navigator.of(context).push(
                               MaterialPageRoute(

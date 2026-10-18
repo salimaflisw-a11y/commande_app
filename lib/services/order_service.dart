@@ -14,6 +14,14 @@ class OrderService extends ChangeNotifier {
 
   OrderModel? get latestOrder => _orders.isNotEmpty ? _orders.first : null;
 
+  /// Check if client is blocked because they left without paying for an order
+  bool get isCurrentClientBlocked =>
+      _orders.any((o) => o.clientLeftWithoutPaying);
+
+  /// The unpaid order that triggered the block
+  OrderModel? get blockingUnpaidOrder =>
+      _orders.where((o) => o.clientLeftWithoutPaying).firstOrNull;
+
   /// Creates and submits a new order, transmitting it to the restaurant manager
   Future<OrderModel> submitOrder({
     required String customerName,
@@ -34,9 +42,11 @@ class OrderService extends ChangeNotifier {
 
     // Order number generation
     final now = DateTime.now();
-    final orderNumber = 'CMD-${now.year}${now.month.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch.toString().substring(7)}';
+    final orderNumber =
+        'CMD-${now.year}${now.month.toString().padLeft(2, '0')}-${now.millisecondsSinceEpoch.toString().substring(7)}';
 
-    final totalTtc = itemsToOrder.fold(0.0, (sum, item) => sum + item.totalPrice);
+    final totalTtc =
+        itemsToOrder.fold(0.0, (sum, item) => sum + item.totalPrice);
     const vatRate = 0.10; // 10%
     final subtotalHt = totalTtc / (1.0 + vatRate);
     final vatAmount = totalTtc - subtotalHt;
@@ -44,8 +54,10 @@ class OrderService extends ChangeNotifier {
     final order = OrderModel(
       id: orderNumber,
       createdAt: now,
-      customerName: customerName.trim().isEmpty ? 'Client Invité' : customerName.trim(),
-      customerPhone: customerPhone.trim().isEmpty ? 'Non renseigné' : customerPhone.trim(),
+      customerName:
+          customerName.trim().isEmpty ? 'Client Invité' : customerName.trim(),
+      customerPhone:
+          customerPhone.trim().isEmpty ? 'Non renseigné' : customerPhone.trim(),
       orderType: orderType,
       tableNumber: tableNumber,
       deliveryAddress: deliveryAddress,
@@ -56,7 +68,11 @@ class OrderService extends ChangeNotifier {
       vatRate: vatRate,
       vatAmount: vatAmount,
       totalTtc: totalTtc,
-      status: 'Envoyée au responsable',
+      // 1. Initial status for admin: 'En attente'
+      status: 'En attente',
+      // 2. Client pays after eating at the table: 'unpaid'
+      paymentStatus: 'unpaid',
+      clientLeftWithoutPaying: false,
       isSentToManager: true,
     );
 
@@ -67,8 +83,64 @@ class OrderService extends ChangeNotifier {
     cart.clear();
     notifyListeners();
 
-    debugPrint('🔔 [NOTIFICATION RESTAURANT] Nouvelle commande reçue: ${order.id} | Client: ${order.customerName} | Total TTC: ${order.totalTtc.toStringAsFixed(2)} €');
+    debugPrint(
+        '🔔 [ADMIN COMMANDE] Reçue (${order.status}) : ${order.id} | Client: ${order.customerName} | Table: ${order.tableNumber ?? "N/A"} | Paiement: ${order.paymentStatus}');
 
     return order;
+  }
+
+  /// Admin sets order status: 'En attente', 'Livrée', 'Rejetée'
+  void updateOrderStatus(String orderId, String newStatus) {
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      _orders[index] = _orders[index].copyWith(status: newStatus);
+      notifyListeners();
+      debugPrint('🔔 [ADMIN STATUS CHANGE] Commande $orderId -> $newStatus');
+    }
+  }
+
+  /// Admin / Server sets payment status for delivered table order: 'paid' or 'unpaid'
+  void updatePaymentStatus(String orderId, String newPaymentStatus) {
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      final wasBlocked = _orders[index].clientLeftWithoutPaying;
+      _orders[index] = _orders[index].copyWith(
+        paymentStatus: newPaymentStatus,
+        clientLeftWithoutPaying:
+            newPaymentStatus == 'paid' ? false : wasBlocked,
+      );
+      notifyListeners();
+      debugPrint(
+          '💳 [ADMIN PAYMENT STATUS] Commande $orderId -> $newPaymentStatus');
+    }
+  }
+
+  /// Triggered if the client leaves without paying: freezes the app immediately!
+  void markClientLeftWithoutPaying(String orderId) {
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      _orders[index] = _orders[index].copyWith(
+        status: 'Livrée',
+        paymentStatus: 'unpaid',
+        clientLeftWithoutPaying: true,
+      );
+      notifyListeners();
+      debugPrint(
+          '🚨 [ALERTE SÉCURITÉ RESTAURANT] Client parti sans payer pour la commande $orderId ! Application bloquée.');
+    }
+  }
+
+  /// Client settles the bill at the counter: unblocks the app and marks order as paid
+  void settlePaymentAndUnblock(String orderId) {
+    final index = _orders.indexWhere((o) => o.id == orderId);
+    if (index != -1) {
+      _orders[index] = _orders[index].copyWith(
+        paymentStatus: 'paid',
+        clientLeftWithoutPaying: false,
+      );
+      notifyListeners();
+      debugPrint(
+          '✅ [PAIEMENT COMPTOIR EFFECTUÉ] Commande $orderId réglée au comptoir. Application débloquée.');
+    }
   }
 }

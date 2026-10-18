@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
 import '../services/cart_service.dart';
+import '../services/auth_service.dart';
 import '../widgets/cart_sheet.dart';
+import '../widgets/auth_popup.dart';
 import 'category_products_page.dart';
 import 'client_orders_page.dart';
 
@@ -216,12 +218,108 @@ class _CatalogPageState extends State<CatalogPage> {
             );
           },
         ),
-        IconButton(
-          icon: const Icon(Icons.person_outline, color: Color(0xFF263238), size: 26),
-          onPressed: () => Navigator.of(context).pushNamed('/login'),
-          tooltip: 'Mon Compte',
+        ListenableBuilder(
+          listenable: AuthService(),
+          builder: (context, _) {
+            final auth = AuthService();
+            if (!auth.isLoggedIn) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: TextButton.icon(
+                  onPressed: () => AuthPopup.show(context, primaryColor: primaryColor),
+                  icon: const Icon(Icons.login_rounded, size: 16),
+                  label: const Text('Connexion', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  style: TextButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    backgroundColor: primaryColor.withValues(alpha: 0.1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  ),
+                ),
+              );
+            }
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 6),
+              child: PopupMenuButton<String>(
+                tooltip: 'Mon Compte Client',
+                onSelected: (val) {
+                  if (val == 'logout') {
+                    AuthService().logout();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Déconnexion réussie. Mode Visiteur activé.'),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    enabled: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          auth.currentUser?.name ?? '',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF263238)),
+                        ),
+                        Text(
+                          auth.currentUser?.email ?? '',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    value: 'logout',
+                    child: Row(
+                      children: [
+                        Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18),
+                        SizedBox(width: 8),
+                        Text('Se déconnecter', style: TextStyle(color: Colors.redAccent)),
+                      ],
+                    ),
+                  ),
+                ],
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 12,
+                        backgroundColor: primaryColor,
+                        child: Text(
+                          (auth.currentUser?.name.isNotEmpty == true)
+                              ? auth.currentUser!.name[0].toUpperCase()
+                              : 'C',
+                          style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        auth.currentUser?.name.split(' ').first ?? 'Client',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
       ],
     );
   }
