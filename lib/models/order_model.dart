@@ -8,23 +8,14 @@ class OrderModel {
   final String orderType; // 'Sur place', 'À emporter', 'Livraison'
   final String? tableNumber;
   final String? deliveryAddress;
-  final String paymentMethod; // 'Paiement au comptoir'
+  final String paymentMethod; // 'Espèces', 'Carte Bancaire', 'En ligne'
   final String specialNotes;
   final List<CartItemModel> items;
   final double subtotalHt;
   final double vatRate;
   final double vatAmount;
   final double totalTtc;
-
-  /// Status pour l'admin : 'En attente', 'Livrée', 'Rejetée'
   final String status;
-
-  /// Statut du paiement pour la table livrée : 'unpaid' (Non payée) ou 'paid' (Payée)
-  final String paymentStatus;
-
-  /// Vrai si le client a quitté le restaurant sans régler la note
-  final bool clientLeftWithoutPaying;
-
   final bool isSentToManager;
 
   const OrderModel({
@@ -42,21 +33,12 @@ class OrderModel {
     this.vatRate = 0.10,
     required this.vatAmount,
     required this.totalTtc,
-    this.status = 'En attente',
-    this.paymentStatus = 'unpaid',
-    this.clientLeftWithoutPaying = false,
+    this.status = 'Envoyée au responsable',
     this.isSentToManager = true,
   });
 
   int get totalItemCount =>
       items.fold(0, (sum, item) => sum + item.quantity);
-
-  bool get isPending => status == 'En attente';
-  bool get isDelivered => status == 'Livrée';
-  bool get isRejected => status == 'Rejetée';
-  bool get isPaid => paymentStatus == 'paid';
-  bool get isUnpaid => paymentStatus == 'unpaid';
-  bool get isBlockedDueToUnpaid => clientLeftWithoutPaying;
 
   Map<String, dynamic> toJson() {
     return {
@@ -74,8 +56,6 @@ class OrderModel {
       'vatAmount': vatAmount,
       'totalTtc': totalTtc,
       'status': status,
-      'paymentStatus': paymentStatus,
-      'clientLeftWithoutPaying': clientLeftWithoutPaying,
       'isSentToManager': isSentToManager,
     };
   }
@@ -96,8 +76,6 @@ class OrderModel {
     double? vatAmount,
     double? totalTtc,
     String? status,
-    String? paymentStatus,
-    bool? clientLeftWithoutPaying,
     bool? isSentToManager,
   }) {
     return OrderModel(
@@ -116,9 +94,6 @@ class OrderModel {
       vatAmount: vatAmount ?? this.vatAmount,
       totalTtc: totalTtc ?? this.totalTtc,
       status: status ?? this.status,
-      paymentStatus: paymentStatus ?? this.paymentStatus,
-      clientLeftWithoutPaying:
-          clientLeftWithoutPaying ?? this.clientLeftWithoutPaying,
       isSentToManager: isSentToManager ?? this.isSentToManager,
     );
   }

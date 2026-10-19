@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'catalog_page.dart';
+import 'responsable_dashboard_page.dart';
+import '../services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,6 +18,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  String _selectedRole = 'client'; // 'client' or 'responsable'
 
   @override
   void dispose() {
@@ -34,39 +36,63 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    await AuthService().login(
-      _emailController.text.trim(),
-      _passwordController.text,
-    );
+    try {
+      final user = await AuthService().login(
+        email: _emailController.text,
+        password: _passwordController.text,
+        preferredRole: _selectedRole,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Connexion réussie pour ${AuthService().currentUser?.name} !'),
-        backgroundColor: Colors.green,
-      ),
-    );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Connexion réussie en tant que ${user.role == 'responsable' ? 'Responsable Restaurant' : 'Client'} !'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const CatalogPage(),
-      ),
-    );
+      if (user.role == 'responsable') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const ResponsableDashboardPage(),
+          ),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => const CatalogPage(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur de connexion : $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFE65100);
 
+    final isResp = _selectedRole == 'responsable';
+
     return Scaffold(
       backgroundColor: const Color(0xFFF9F9FB),
       appBar: AppBar(
-        title: const Text('Connexion Client'),
+        title: Text(isResp ? 'Espace Responsable' : 'Connexion Client'),
         centerTitle: true,
         elevation: 0,
       ),
@@ -86,30 +112,138 @@ class _LoginPageState extends State<LoginPage> {
                       color: primaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.restaurant_rounded,
+                    child: Icon(
+                      isResp ? Icons.admin_panel_settings_rounded : Icons.restaurant_rounded,
                       size: 56,
                       color: primaryColor,
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Bon retour !',
+                Text(
+                  isResp ? 'Accès Responsable' : 'Bon retour !',
                   textAlign: TextAlign.center,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF263238),
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
-                  'Connectez-vous pour accéder à vos commandes',
+                Text(
+                  isResp
+                      ? 'Consultez les commandes et suivez les ventes'
+                      : 'Connectez-vous pour accéder à vos commandes',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.black54),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 20),
+
+                // Sélecteur de rôle : Client vs Responsable (Exigence sécurité & rôles)
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECEFF1),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedRole = 'client';
+                              _emailController.text = 'client@example.com';
+                              _passwordController.text = 'client123';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: !isResp ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: !isResp
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.person_outline,
+                                  size: 18,
+                                  color: !isResp ? primaryColor : Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Client',
+                                  style: TextStyle(
+                                    fontWeight: !isResp ? FontWeight.bold : FontWeight.w500,
+                                    color: !isResp ? primaryColor : Colors.grey.shade700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedRole = 'responsable';
+                              _emailController.text = 'responsable@restaurant.com';
+                              _passwordController.text = 'admin123';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isResp ? Colors.white : Colors.transparent,
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: isResp
+                                  ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.08),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.storefront_outlined,
+                                  size: 18,
+                                  color: isResp ? primaryColor : Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Responsable',
+                                  style: TextStyle(
+                                    fontWeight: isResp ? FontWeight.bold : FontWeight.w500,
+                                    color: isResp ? primaryColor : Colors.grey.shade700,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 Card(
                   elevation: 2,
                   shadowColor: Colors.black12,

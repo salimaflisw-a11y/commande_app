@@ -1,29 +1,32 @@
 import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
 import '../services/cart_service.dart';
-import '../services/auth_service.dart';
+import '../services/menu_service.dart';
 import '../widgets/product_customization_sheet.dart';
 import '../widgets/cart_sheet.dart';
-import '../widgets/auth_popup.dart';
 import 'client_orders_page.dart';
 
 class CategoryProductsPage extends StatelessWidget {
-  final MenuCategory category;
+  final CategoryInfo category;
 
   const CategoryProductsPage({super.key, required this.category});
 
-  List<MenuItemModel> get _items =>
-      sampleMenuItems.where((item) => item.category == category).toList();
+  List<MenuItemModel> _items(MenuService menu) =>
+      menu.getItemsByCategory(category);
 
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFE65100);
-    final items = _items;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB),
-      body: CustomScrollView(
-        slivers: [
+    return ListenableBuilder(
+      listenable: MenuService(),
+      builder: (context, _) {
+        final items = _items(MenuService());
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF9F9FB),
+          body: CustomScrollView(
+            slivers: [
           // ── Sliver App Bar with category banner image ──────────────────
           SliverAppBar(
             expandedHeight: 220,
@@ -300,6 +303,8 @@ class CategoryProductsPage extends StatelessWidget {
         },
       ),
     );
+        },
+      );
   }
 }
 
@@ -317,22 +322,6 @@ class _ProductCard extends StatelessWidget {
       item: item,
       primaryColor: primaryColor,
     );
-  }
-
-  void _handleAddToCart(BuildContext context) {
-    if (!AuthService().isLoggedIn) {
-      AuthPopup.show(
-        context,
-        primaryColor: primaryColor,
-        customMessage:
-            'Pour ajouter "${item.name}" à votre panier, veuillez vous connecter ou créer un compte client.',
-        onSuccess: () {
-          _openCustomizationPopup(context);
-        },
-      );
-      return;
-    }
-    _openCustomizationPopup(context);
   }
 
   @override
@@ -539,7 +528,7 @@ class _ProductCard extends StatelessWidget {
 
                     // [Add to pannier] button
                     ElevatedButton.icon(
-                      onPressed: () => _handleAddToCart(context),
+                      onPressed: () => _openCustomizationPopup(context),
                       icon: const Icon(
                         Icons.add_shopping_cart_rounded,
                         size: 16,

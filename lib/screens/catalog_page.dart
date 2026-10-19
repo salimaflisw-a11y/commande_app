@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
 import '../services/cart_service.dart';
 import '../services/auth_service.dart';
+import '../services/menu_service.dart';
 import '../widgets/cart_sheet.dart';
-import '../widgets/auth_popup.dart';
 import 'category_products_page.dart';
 import 'client_orders_page.dart';
+import 'responsable_dashboard_page.dart';
 
 class CatalogPage extends StatefulWidget {
   const CatalogPage({super.key});
@@ -16,39 +17,50 @@ class CatalogPage extends StatefulWidget {
 
 class _CatalogPageState extends State<CatalogPage> {
   // Currently selected category (null = All categories)
-  MenuCategory? _selectedCategory;
+  CategoryInfo? _selectedCategory;
 
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFE65100);
+    final menuService = MenuService();
 
-    // List of categories to display based on top menu selection
-    final displayedCategories = _selectedCategory == null
-        ? MenuCategory.values
-        : [_selectedCategory!];
+    return ListenableBuilder(
+      listenable: menuService,
+      builder: (context, _) {
+        final allCategories = menuService.categories;
+        final displayedCategories = _selectedCategory == null
+            ? allCategories
+            : allCategories.where((c) => c.id == _selectedCategory!.id).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB),
-      appBar: _buildAppBar(primaryColor),
-      body: Column(
-        children: [
-          // Top Menu with category name buttons
-          _buildTopCategoryButtonsMenu(primaryColor),
+        return Scaffold(
+          backgroundColor: const Color(0xFFF9F9FB),
+          appBar: _buildAppBar(primaryColor),
+          body: Column(
+            children: [
+              // Top Menu with category name buttons
+              _buildTopCategoryButtonsMenu(primaryColor, allCategories),
 
-          // Category Banners List (no products, disabled "Consulter" button)
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: displayedCategories.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final category = displayedCategories[index];
-                return _buildCategoryBannerCard(category, primaryColor);
-              },
-            ),
+              // Category Banners List (no products, disabled "Consulter" button)
+              Expanded(
+                child: displayedCategories.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Aucune catégorie disponible',
+                          style: TextStyle(fontSize: 15, color: Colors.grey.shade600),
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                        itemCount: displayedCategories.length,
+                        separatorBuilder: (_, _) => const SizedBox(height: 16),
+                        itemBuilder: (context, index) {
+                          final category = displayedCategories[index];
+                          return _buildCategoryBannerCard(category, primaryColor);
+                        },
+                      ),
+              ),
+            ],
           ),
-        ],
-      ),
       bottomNavigationBar: ListenableBuilder(
         listenable: CartService(),
         builder: (context, _) {
@@ -131,6 +143,8 @@ class _CatalogPageState extends State<CatalogPage> {
         },
       ),
     );
+        },
+      );
   }
 
   AppBar _buildAppBar(Color primaryColor) {
@@ -218,114 +232,31 @@ class _CatalogPageState extends State<CatalogPage> {
             );
           },
         ),
-        ListenableBuilder(
-          listenable: AuthService(),
-          builder: (context, _) {
-            final auth = AuthService();
-            if (!auth.isLoggedIn) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: TextButton.icon(
-                  onPressed: () => AuthPopup.show(context, primaryColor: primaryColor),
-                  icon: const Icon(Icons.login_rounded, size: 16),
-                  label: const Text('Connexion', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  style: TextButton.styleFrom(
-                    foregroundColor: primaryColor,
-                    backgroundColor: primaryColor.withValues(alpha: 0.1),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  ),
-                ),
-              );
-            }
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 6),
-              child: PopupMenuButton<String>(
-                tooltip: 'Mon Compte Client',
-                onSelected: (val) {
-                  if (val == 'logout') {
-                    AuthService().logout();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Déconnexion réussie. Mode Visiteur activé.'),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    enabled: false,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          auth.currentUser?.name ?? '',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF263238)),
-                        ),
-                        Text(
-                          auth.currentUser?.email ?? '',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                    value: 'logout',
-                    child: Row(
-                      children: [
-                        Icon(Icons.logout_rounded, color: Colors.redAccent, size: 18),
-                        SizedBox(width: 8),
-                        Text('Se déconnecter', style: TextStyle(color: Colors.redAccent)),
-                      ],
-                    ),
-                  ),
-                ],
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CircleAvatar(
-                        radius: 12,
-                        backgroundColor: primaryColor,
-                        child: Text(
-                          (auth.currentUser?.name.isNotEmpty == true)
-                              ? auth.currentUser!.name[0].toUpperCase()
-                              : 'C',
-                          style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        auth.currentUser?.name.split(' ').first ?? 'Client',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
+        IconButton(
+          icon: const Icon(Icons.person_outline, color: Color(0xFF263238), size: 26),
+          onPressed: () => Navigator.of(context).pushNamed('/login'),
+          tooltip: 'Mon Compte',
         ),
-        const SizedBox(width: 6),
+        IconButton(
+          icon: const Icon(Icons.storefront_outlined, color: Color(0xFFE65100), size: 26),
+          onPressed: () {
+            if (AuthService().isResponsable) {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ResponsableDashboardPage()),
+              );
+            } else {
+              Navigator.of(context).pushNamed('/login');
+            }
+          },
+          tooltip: 'Espace Responsable',
+        ),
+        const SizedBox(width: 8),
       ],
     );
   }
 
   /// Top Menu with buttons of the names for the categories
-  Widget _buildTopCategoryButtonsMenu(Color primaryColor) {
+  Widget _buildTopCategoryButtonsMenu(Color primaryColor, List<CategoryInfo> allCategories) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -348,9 +279,9 @@ class _CatalogPageState extends State<CatalogPage> {
             ),
             const SizedBox(width: 8),
 
-            // Specific Category Buttons (Sandwiches, Plates, Coffee, Drinks, Desserts)
-            ...MenuCategory.values.map((cat) {
-              final isSelected = _selectedCategory == cat;
+            // Category Buttons from MenuService
+            ...allCategories.map((cat) {
+              final isSelected = _selectedCategory?.id == cat.id;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: _buildCategoryMenuButton(
@@ -415,7 +346,7 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 
   /// Big Category Banner with background photo, title, subtitle and disabled [Consulter] button
-  Widget _buildCategoryBannerCard(MenuCategory cat, Color primaryColor) {
+  Widget _buildCategoryBannerCard(CategoryInfo cat, Color primaryColor) {
     return Container(
       height: 175,
       decoration: BoxDecoration(
@@ -560,7 +491,7 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  Widget _buildSafeImage(String url, MenuCategory cat) {
+  Widget _buildSafeImage(String url, CategoryInfo cat) {
     return Image.network(
       url,
       fit: BoxFit.cover,

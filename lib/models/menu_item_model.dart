@@ -1,4 +1,12 @@
-enum MenuCategory {
+abstract class CategoryInfo {
+  String get id;
+  String get label;
+  String get emoji;
+  String get subtitle;
+  String get bannerImageUrl;
+}
+
+enum MenuCategory implements CategoryInfo {
   sandwiches(
     'Fast-Food',
     '🍔',
@@ -30,9 +38,13 @@ enum MenuCategory {
     'https://images.unsplash.com/photo-1551024601-bec78aea704b?auto=format&fit=crop&w=1200&q=80',
   );
 
+  @override
   final String label;
+  @override
   final String emoji;
+  @override
   final String subtitle;
+  @override
   final String bannerImageUrl;
 
   const MenuCategory(
@@ -41,6 +53,68 @@ enum MenuCategory {
     this.subtitle,
     this.bannerImageUrl,
   );
+
+  @override
+  String get id => name;
+}
+
+class CategoryModel implements CategoryInfo {
+  @override
+  final String id;
+  @override
+  final String label;
+  @override
+  final String emoji;
+  @override
+  final String subtitle;
+  @override
+  final String bannerImageUrl;
+  final bool isDefault;
+
+  const CategoryModel({
+    required this.id,
+    required this.label,
+    required this.emoji,
+    required this.subtitle,
+    required this.bannerImageUrl,
+    this.isDefault = false,
+  });
+
+  factory CategoryModel.fromCategoryInfo(CategoryInfo info) {
+    return CategoryModel(
+      id: info.id,
+      label: info.label,
+      emoji: info.emoji,
+      subtitle: info.subtitle,
+      bannerImageUrl: info.bannerImageUrl,
+      isDefault: info is MenuCategory,
+    );
+  }
+
+  CategoryModel copyWith({
+    String? id,
+    String? label,
+    String? emoji,
+    String? subtitle,
+    String? bannerImageUrl,
+    bool? isDefault,
+  }) {
+    return CategoryModel(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      emoji: emoji ?? this.emoji,
+      subtitle: subtitle ?? this.subtitle,
+      bannerImageUrl: bannerImageUrl ?? this.bannerImageUrl,
+      isDefault: isDefault ?? this.isDefault,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) || (other is CategoryInfo && other.id == id);
+
+  @override
+  int get hashCode => id.hashCode;
 }
 
 class MenuItemModel {
@@ -48,7 +122,7 @@ class MenuItemModel {
   final String name;
   final String description;
   final double price;
-  final MenuCategory category;
+  final CategoryInfo category;
   final String imageUrl;
   final double rating;
   final int reviewsCount;
@@ -79,7 +153,7 @@ class MenuItemModel {
     String? name,
     String? description,
     double? price,
-    MenuCategory? category,
+    CategoryInfo? category,
     String? imageUrl,
     double? rating,
     int? reviewsCount,
@@ -112,7 +186,7 @@ class MenuItemModel {
       'name': name,
       'description': description,
       'price': price,
-      'category': category.name,
+      'category': category.id,
       'imageUrl': imageUrl,
       'rating': rating,
       'reviewsCount': reviewsCount,
@@ -125,15 +199,24 @@ class MenuItemModel {
   }
 
   factory MenuItemModel.fromJson(Map<String, dynamic> json) {
+    final catId = json['category'] as String? ?? '';
+    final foundCategory = MenuCategory.values.cast<CategoryInfo>().firstWhere(
+      (c) => c.id == catId || (c as MenuCategory).name == catId,
+      orElse: () => CategoryModel(
+        id: catId.isNotEmpty ? catId : 'custom',
+        label: json['categoryLabel'] as String? ?? 'Divers',
+        emoji: '🍽️',
+        subtitle: '',
+        bannerImageUrl: '',
+      ),
+    );
+
     return MenuItemModel(
       id: json['id'] as String,
       name: json['name'] as String,
       description: json['description'] as String,
       price: (json['price'] as num).toDouble(),
-      category: MenuCategory.values.firstWhere(
-        (c) => c.name == json['category'],
-        orElse: () => MenuCategory.sandwiches,
-      ),
+      category: foundCategory,
       imageUrl: json['imageUrl'] as String,
       rating: (json['rating'] as num?)?.toDouble() ?? 4.5,
       reviewsCount: json['reviewsCount'] as int? ?? 0,

@@ -1,114 +1,97 @@
 import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 
+/// Service de gestion de l'authentification et des rôles utilisateurs (Client / Responsable).
 class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
-  AuthService._internal() {
-    // Seed some registered clients for quick testing
-    _registeredUsers.addAll([
-      UserModel(
-        id: 'usr_001',
-        name: 'Salim Client',
-        email: 'salim@restaurant.fr',
-        phone: '06 12 34 56 78',
-        address: '15 Avenue des Champs, Paris',
-        role: 'client',
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-      ),
-      UserModel(
-        id: 'usr_002',
-        name: 'Sophie Martin',
-        email: 'sophie@client.fr',
-        phone: '07 88 99 00 11',
-        address: '8 Rue Gourmande, Lyon',
-        role: 'client',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-      ),
-    ]);
-  }
+  AuthService._internal();
 
-  // Current logged in user (null = Visitor)
   UserModel? _currentUser;
 
-  // In-memory list of registered clients
-  final List<UserModel> _registeredUsers = [];
-
   UserModel? get currentUser => _currentUser;
-  bool get isLoggedIn => _currentUser != null;
-  String get displayName => _currentUser?.name ?? 'Visiteur';
+  bool get isAuthenticated => _currentUser != null;
+  bool get isResponsable => _currentUser?.role == 'responsable';
+  bool get isClient => _currentUser?.role == 'client';
 
-  List<UserModel> get registeredUsers => List.unmodifiable(_registeredUsers);
+  /// Comptes de démonstration préconfigurés
+  static final UserModel defaultResponsable = UserModel(
+    id: 'RESP-001',
+    name: 'Chef & Gérant Restaurant',
+    email: 'responsable@restaurant.com',
+    phone: '06 99 88 77 66',
+    address: 'Bureau Restaurant - Paris',
+    role: 'responsable',
+    createdAt: DateTime(2026, 1, 1),
+  );
 
-  /// Authenticate with email & password
-  Future<bool> login(String email, String password) async {
-    await Future.delayed(const Duration(milliseconds: 400));
+  static final UserModel defaultClient = UserModel(
+    id: 'CLI-001',
+    name: 'Salim Amrani',
+    email: 'client@example.com',
+    phone: '06 12 34 56 78',
+    address: '15 Rue de Rivoli, 75001 Paris',
+    role: 'client',
+    createdAt: DateTime(2026, 2, 10),
+  );
 
-    final trimmedEmail = email.trim().toLowerCase();
-    
-    // Look for matching user in registered list
-    final existingUser = _registeredUsers.firstWhere(
-      (u) => u.email.toLowerCase() == trimmedEmail,
-      orElse: () {
-        // If not found in seed list, create a client account automatically on the fly
-        final nameFromEmail = trimmedEmail.split('@').first;
-        final capitalized = nameFromEmail.isNotEmpty
-            ? '${nameFromEmail[0].toUpperCase()}${nameFromEmail.substring(1)}'
-            : 'Client';
-        final newUser = UserModel(
-          id: 'usr_${DateTime.now().millisecondsSinceEpoch}',
-          name: capitalized,
-          email: trimmedEmail,
-          phone: '06 00 00 00 00',
-          address: 'Adresse non renseignée',
-          role: 'client',
-          createdAt: DateTime.now(),
-        );
-        _registeredUsers.add(newUser);
-        return newUser;
-      },
-    );
-
-    _currentUser = existingUser;
-    notifyListeners();
-    return true;
-  }
-
-  /// Register a brand new client account
-  Future<UserModel> register({
-    required String name,
+  /// Connexion utilisateur avec détection automatique du rôle
+  Future<UserModel> login({
     required String email,
-    required String phone,
-    String address = '',
     required String password,
+    String? preferredRole,
   }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 600));
 
-    final newUser = UserModel(
-      id: 'usr_${DateTime.now().millisecondsSinceEpoch}',
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      phone: phone.trim(),
-      address: address.trim().isEmpty ? 'Sur place / Comptoir' : address.trim(),
-      role: 'client',
-      createdAt: DateTime.now(),
-    );
+    final cleanEmail = email.trim().toLowerCase();
 
-    _registeredUsers.removeWhere((u) => u.email.toLowerCase() == newUser.email);
-    _registeredUsers.add(newUser);
-    _currentUser = newUser;
+    // Détection du rôle selon l'e-mail ou le rôle spécifié
+    if (preferredRole == 'responsable' ||
+        cleanEmail.contains('responsable') ||
+        cleanEmail.contains('admin') ||
+        cleanEmail.contains('gerant')) {
+      _currentUser = UserModel(
+        id: 'RESP-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+        name: cleanEmail.contains('admin') ? 'Administrateur' : 'Responsable Restaurant',
+        email: cleanEmail,
+        phone: '06 99 88 77 66',
+        address: 'Bureau de direction',
+        role: 'responsable',
+        createdAt: DateTime.now(),
+      );
+    } else {
+      _currentUser = UserModel(
+        id: 'CLI-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}',
+        name: cleanEmail.split('@').first.toUpperCase(),
+        email: cleanEmail,
+        phone: '06 12 34 56 78',
+        address: 'Paris, France',
+        role: 'client',
+        createdAt: DateTime.now(),
+      );
+    }
+
     notifyListeners();
-
-    return newUser;
+    return _currentUser!;
   }
 
-  /// One-tap demo client login for instant testing
-  void loginAsDemo() {
-    _currentUser = _registeredUsers.first;
+  /// Connexion directe en tant que responsable (pratique pour les démos & tests de l'enseignante)
+  Future<UserModel> loginAsResponsable() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _currentUser = defaultResponsable;
     notifyListeners();
+    return _currentUser!;
   }
 
-  /// Disconnect client and return to visitor mode
+  /// Connexion directe en tant que client
+  Future<UserModel> loginAsClient() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _currentUser = defaultClient;
+    notifyListeners();
+    return _currentUser!;
+  }
+
+  /// Déconnexion
   void logout() {
     _currentUser = null;
     notifyListeners();

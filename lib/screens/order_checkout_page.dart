@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
-import '../services/auth_service.dart';
 import 'order_success_page.dart';
 
 class OrderCheckoutPage extends StatefulWidget {
@@ -13,26 +12,15 @@ class OrderCheckoutPage extends StatefulWidget {
 
 class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
-  late final TextEditingController _phoneController;
-  late final TextEditingController _tableController;
-  late final TextEditingController _addressController;
-  late final TextEditingController _notesController;
+  final _nameController = TextEditingController(text: 'Salim A.');
+  final _phoneController = TextEditingController(text: '06 12 34 56 78');
+  final _tableController = TextEditingController(text: 'Table 4');
+  final _addressController = TextEditingController();
+  final _notesController = TextEditingController();
 
   String _selectedOrderType = 'Sur place'; // 'Sur place', 'À emporter', 'Livraison'
-  final String _selectedPayment = 'Paiement au comptoir'; // Only payment method allowed
+  String _selectedPayment = 'Carte Bancaire'; // 'Carte Bancaire', 'Espèces', 'Paiement au comptoir'
   bool _isSubmitting = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final user = AuthService().currentUser;
-    _nameController = TextEditingController(text: user?.name ?? '');
-    _phoneController = TextEditingController(text: user?.phone ?? '');
-    _tableController = TextEditingController(text: 'Table 1');
-    _addressController = TextEditingController(text: user?.address ?? '');
-    _notesController = TextEditingController();
-  }
 
   @override
   void dispose() {
@@ -548,88 +536,50 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
   }
 
   Widget _buildPaymentMethodSelector(Color primaryColor) {
-    const paymentName = 'Paiement au comptoir (après le repas)';
+    final methods = [
+      {'name': 'Carte Bancaire', 'icon': Icons.credit_card_rounded},
+      {'name': 'Espèces', 'icon': Icons.payments_outlined},
+      {'name': 'Paiement au comptoir', 'icon': Icons.point_of_sale_rounded},
+    ];
 
-    return Container(
-      decoration: BoxDecoration(
-        color: primaryColor.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: primaryColor,
-          width: 1.5,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.point_of_sale_rounded,
-              color: primaryColor,
-              size: 24,
+    return Column(
+      children: methods.map((m) {
+        final name = m['name'] as String;
+        final icon = m['icon'] as IconData;
+        final isSelected = _selectedPayment == name;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? primaryColor.withValues(alpha: 0.08) : Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSelected ? primaryColor : Colors.grey.shade200,
+              width: 1.2,
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        paymentName,
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF263238),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2E7D32).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'Unique option',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2E7D32),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  'Le client paie au comptoir (espèces ou carte bancaire) après avoir terminé son repas.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade700,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+          child: ListTile(
+            onTap: () => setState(() => _selectedPayment = name),
+            dense: true,
+            leading: Icon(icon, color: isSelected ? primaryColor : Colors.grey.shade700),
+            title: Text(
+              name,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: const Color(0xFF263238),
+              ),
+            ),
+            trailing: Icon(
+              isSelected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_off_rounded,
+              color: isSelected ? primaryColor : Colors.grey.shade400,
+              size: 22,
             ),
           ),
-          const SizedBox(width: 8),
-          Icon(
-            Icons.check_circle_rounded,
-            color: primaryColor,
-            size: 24,
-          ),
-        ],
-      ),
+        );
+      }).toList(),
     );
   }
 
