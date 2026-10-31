@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import 'login_page.dart';
 import 'catalog_page.dart';
@@ -59,22 +60,23 @@ class _RegisterPageState extends State<RegisterPage> {
       _isLoading = true;
     });
 
-    await AuthService().register(
-      name: _nameController.text.trim(),
-      email: _emailController.text.trim(),
-      phone: _phoneController.text.trim(),
-      address: _addressController.text.trim(),
-      password: _passwordController.text,
-    );
+    try {
+      await AuthService().register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        phone: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
+      setState(() {
+        _isLoading = false;
+      });
 
-    // Success dialog
-    showDialog(
+      // Success dialog
+      showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(
@@ -122,6 +124,43 @@ class _RegisterPageState extends State<RegisterPage> {
         ],
       ),
     );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+
+      String errorMsg = 'Erreur lors de la création du compte.';
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'operation-not-allowed':
+            errorMsg = 'Activez "Email/Mot de passe" dans Firebase Console > Authentication !';
+            break;
+          case 'email-already-in-use':
+            errorMsg = 'Cet email est déjà utilisé par un autre compte.';
+            break;
+          case 'weak-password':
+            errorMsg = 'Le mot de passe doit comporter au moins 6 caractères.';
+            break;
+          case 'invalid-email':
+            errorMsg = 'Adresse email non valide.';
+            break;
+          default:
+            errorMsg = e.message ?? e.code;
+        }
+      } else {
+        errorMsg = 'Erreur : $e';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   @override

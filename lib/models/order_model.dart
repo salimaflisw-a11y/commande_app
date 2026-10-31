@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'cart_item_model.dart';
 
 class OrderModel {
@@ -49,7 +50,7 @@ class OrderModel {
   });
 
   int get totalItemCount =>
-      items.fold(0, (sum, item) => sum + item.quantity);
+      items.fold(0, (acc, item) => acc + item.quantity);
 
   bool get isPending => status == 'En attente';
   bool get isDelivered => status == 'Livrée';
@@ -78,6 +79,41 @@ class OrderModel {
       'clientLeftWithoutPaying': clientLeftWithoutPaying,
       'isSentToManager': isSentToManager,
     };
+  }
+
+  factory OrderModel.fromJson(Map<String, dynamic> json) {
+    // Handle both Firestore Timestamp and ISO string
+    DateTime parseDate(dynamic v) {
+      if (v is Timestamp) return v.toDate();
+      if (v is String) return DateTime.tryParse(v) ?? DateTime.now();
+      return DateTime.now();
+    }
+
+    final rawItems = json['items'] as List<dynamic>? ?? [];
+
+    return OrderModel(
+      id: json['id'] as String? ?? '',
+      createdAt: parseDate(json['createdAt']),
+      customerName: json['customerName'] as String? ?? '',
+      customerPhone: json['customerPhone'] as String? ?? '',
+      orderType: json['orderType'] as String? ?? '',
+      tableNumber: json['tableNumber'] as String?,
+      deliveryAddress: json['deliveryAddress'] as String?,
+      paymentMethod: json['paymentMethod'] as String? ?? '',
+      specialNotes: json['specialNotes'] as String? ?? '',
+      items: rawItems
+          .map((e) => CartItemModel.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      subtotalHt: (json['subtotalHt'] as num?)?.toDouble() ?? 0.0,
+      vatRate: (json['vatRate'] as num?)?.toDouble() ?? 0.10,
+      vatAmount: (json['vatAmount'] as num?)?.toDouble() ?? 0.0,
+      totalTtc: (json['totalTtc'] as num?)?.toDouble() ?? 0.0,
+      status: json['status'] as String? ?? 'En attente',
+      paymentStatus: json['paymentStatus'] as String? ?? 'unpaid',
+      clientLeftWithoutPaying:
+          json['clientLeftWithoutPaying'] as bool? ?? false,
+      isSentToManager: json['isSentToManager'] as bool? ?? true,
+    );
   }
 
   OrderModel copyWith({

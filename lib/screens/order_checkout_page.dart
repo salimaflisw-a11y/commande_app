@@ -73,6 +73,7 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
         deliveryAddress: null,
         paymentMethod: _selectedPayment,
         specialNotes: _notesController.text.trim(),
+        customerId: AuthService().currentUser?.id,
       );
 
       if (!mounted) return;

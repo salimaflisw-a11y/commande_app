@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 
 /// Modal popup displayed to visitors when attempting to add products to cart
@@ -86,13 +87,24 @@ class _AuthPopupState extends State<AuthPopup> with SingleTickerProviderStateMix
     if (!_loginFormKey.currentState!.validate()) return;
 
     setState(() => _loginLoading = true);
-    await AuthService().login(
+    final success = await AuthService().login(
       _loginEmailController.text.trim(),
       _loginPasswordController.text,
     );
 
     if (!mounted) return;
     setState(() => _loginLoading = false);
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Identifiants incorrects ou compte inexistant.'),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     _completeSuccess('Bon retour parmi nous, ${AuthService().currentUser?.name} !');
   }
@@ -101,17 +113,53 @@ class _AuthPopupState extends State<AuthPopup> with SingleTickerProviderStateMix
     if (!_registerFormKey.currentState!.validate()) return;
 
     setState(() => _regLoading = true);
-    final user = await AuthService().register(
-      name: _regNameController.text.trim(),
-      email: _regEmailController.text.trim(),
-      phone: _regPhoneController.text.trim(),
-      password: _regPasswordController.text,
-    );
+    try {
+      final user = await AuthService().register(
+        name: _regNameController.text.trim(),
+        email: _regEmailController.text.trim(),
+        phone: _regPhoneController.text.trim(),
+        password: _regPasswordController.text,
+      );
 
-    if (!mounted) return;
-    setState(() => _regLoading = false);
+      if (!mounted) return;
+      setState(() => _regLoading = false);
 
-    _completeSuccess('Bienvenue ${user.name} ! Votre compte client est activé.');
+      _completeSuccess('Bienvenue ${user.name} ! Votre compte client est activé.');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _regLoading = false);
+
+      String errorMsg = 'Erreur lors de la création du compte.';
+      if (e is FirebaseAuthException) {
+        switch (e.code) {
+          case 'operation-not-allowed':
+            errorMsg = 'Activez "Email/Mot de passe" dans Firebase Console > Authentication !';
+            break;
+          case 'email-already-in-use':
+            errorMsg = 'Cet email est déjà utilisé par un autre compte.';
+            break;
+          case 'weak-password':
+            errorMsg = 'Le mot de passe doit comporter au moins 6 caractères.';
+            break;
+          case 'invalid-email':
+            errorMsg = 'Adresse email non valide.';
+            break;
+          default:
+            errorMsg = e.message ?? e.code;
+        }
+      } else {
+        errorMsg = 'Erreur : $e';
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMsg),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    }
   }
 
   void _completeSuccess(String message) {

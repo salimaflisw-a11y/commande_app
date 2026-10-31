@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'catalog_page.dart';
+import 'client_orders_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -34,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    await AuthService().login(
+    final success = await AuthService().login(
       _emailController.text.trim(),
       _passwordController.text,
     );
@@ -45,18 +46,38 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = false;
     });
 
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Mot de passe incorrect. Veuillez réessayer.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    final auth = AuthService();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Connexion réussie pour ${AuthService().currentUser?.name} !'),
+        content: Text('Connexion réussie pour ${auth.currentUser?.name} !'),
         backgroundColor: Colors.green,
       ),
     );
 
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (context) => const CatalogPage(),
-      ),
-    );
+    // Redirect admin to the orders management page, clients to the catalog
+    if (auth.isAdmin) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const ClientOrdersPage(),
+        ),
+      );
+    } else {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const CatalogPage(),
+        ),
+      );
+    }
   }
 
   @override

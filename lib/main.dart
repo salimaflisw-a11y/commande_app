@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'services/order_service.dart';
 import 'widgets/unpaid_blocked_overlay.dart';
 import 'screens/register_page.dart';
@@ -7,7 +9,11 @@ import 'screens/catalog_page.dart';
 import 'screens/order_checkout_page.dart';
 import 'screens/client_orders_page.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const CommandeApp());
 }
 

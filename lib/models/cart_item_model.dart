@@ -117,4 +117,61 @@ class CartItemModel {
       extraPricePerUnit: extraPricePerUnit ?? this.extraPricePerUnit,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'itemId': item.id,
+      'itemName': item.name,
+      'itemPrice': item.price,
+      'itemCategory': item.category.name,
+      'itemImageUrl': item.imageUrl,
+      'selectedIngredients': selectedIngredients,
+      'removedIngredients': removedIngredients,
+      'supplements': supplements.map((s) => s.toJson()).toList(),
+      'quantity': quantity,
+      'specialInstructions': specialInstructions,
+      'unitPrice': unitPrice,
+      'totalPrice': totalPrice,
+    };
+  }
+
+  factory CartItemModel.fromJson(Map<String, dynamic> json) {
+    // Rebuild a minimal MenuItemModel from the snapshot stored in Firestore
+    final catName = json['itemCategory'] as String? ?? '';
+    final category = MenuCategory.values.firstWhere(
+      (c) => c.name == catName || c.label.toLowerCase() == catName.toLowerCase(),
+      orElse: () => MenuCategory.sandwiches,
+    );
+
+    final menuItem = MenuItemModel(
+      id: json['itemId'] as String? ?? '',
+      name: json['itemName'] as String? ?? '',
+      price: (json['itemPrice'] as num?)?.toDouble() ?? 0.0,
+      category: category,
+      imageUrl: json['itemImageUrl'] as String? ?? '',
+      description: '',
+      ingredients: const [],
+    );
+
+    final rawSupplements = json['supplements'] as List<dynamic>? ?? [];
+
+    return CartItemModel(
+      id: json['id'] as String? ?? '',
+      item: menuItem,
+      selectedIngredients:
+          (json['selectedIngredients'] as List<dynamic>? ?? [])
+              .map((e) => e as String)
+              .toList(),
+      removedIngredients:
+          (json['removedIngredients'] as List<dynamic>? ?? [])
+              .map((e) => e as String)
+              .toList(),
+      supplements: rawSupplements
+          .map((e) => SupplementItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      quantity: (json['quantity'] as num?)?.toInt() ?? 1,
+      specialInstructions: json['specialInstructions'] as String? ?? '',
+    );
+  }
 }
