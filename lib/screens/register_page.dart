@@ -18,7 +18,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
@@ -33,7 +32,6 @@ class _RegisterPageState extends State<RegisterPage> {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _addressController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -65,7 +63,6 @@ class _RegisterPageState extends State<RegisterPage> {
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
         phone: _phoneController.text.trim(),
-        address: _addressController.text.trim(),
         password: _passwordController.text,
       );
 
@@ -289,21 +286,6 @@ class _RegisterPageState extends State<RegisterPage> {
                             }
                             if (value.trim().length < 8) {
                               return 'Numéro de téléphone invalide';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Delivery Address
-                        _buildInputField(
-                          controller: _addressController,
-                          label: 'Adresse de livraison (ou N° de table)',
-                          hint: 'Rue, Appartement ou Table N°',
-                          icon: Icons.location_on_outlined,
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return 'Veuillez renseigner votre adresse de livraison';
                             }
                             return null;
                           },

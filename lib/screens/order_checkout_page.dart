@@ -16,7 +16,6 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _tableController;
-  late final TextEditingController _addressController;
   late final TextEditingController _notesController;
 
   final String _selectedOrderType = 'Sur place';
@@ -30,7 +29,6 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
     _nameController = TextEditingController(text: user?.name ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
     _tableController = TextEditingController(text: 'Table 1');
-    _addressController = TextEditingController(text: user?.address ?? '');
     _notesController = TextEditingController();
   }
 
@@ -39,7 +37,6 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
     _nameController.dispose();
     _phoneController.dispose();
     _tableController.dispose();
-    _addressController.dispose();
     _notesController.dispose();
     super.dispose();
   }

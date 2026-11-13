@@ -51,8 +51,8 @@ class _AuthPopupState extends State<AuthPopup> with SingleTickerProviderStateMix
 
   // Login form controllers
   final _loginFormKey = GlobalKey<FormState>();
-  final _loginEmailController = TextEditingController(text: 'salim@restaurant.fr');
-  final _loginPasswordController = TextEditingController(text: '123456');
+  final _loginEmailController = TextEditingController();
+  final _loginPasswordController = TextEditingController();
   bool _loginObscure = true;
   bool _loginLoading = false;
 
@@ -87,7 +87,8 @@ class _AuthPopupState extends State<AuthPopup> with SingleTickerProviderStateMix
     if (!_loginFormKey.currentState!.validate()) return;
 
     setState(() => _loginLoading = true);
-    final success = await AuthService().login(
+    final auth = AuthService();
+    final success = await auth.login(
       _loginEmailController.text.trim(),
       _loginPasswordController.text,
     );
@@ -98,7 +99,10 @@ class _AuthPopupState extends State<AuthPopup> with SingleTickerProviderStateMix
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Identifiants incorrects ou compte inexistant.'),
+          content: Text(
+            auth.lastAuthError ??
+                'Identifiants incorrects ou compte inexistant.',
+          ),
           backgroundColor: Colors.red.shade700,
           behavior: SnackBarBehavior.floating,
         ),
@@ -106,7 +110,7 @@ class _AuthPopupState extends State<AuthPopup> with SingleTickerProviderStateMix
       return;
     }
 
-    _completeSuccess('Bon retour parmi nous, ${AuthService().currentUser?.name} !');
+    _completeSuccess('Bon retour parmi nous, ${auth.displayName} !');
   }
 
   Future<void> _handleRegister() async {
@@ -348,7 +352,7 @@ class _AuthPopupState extends State<AuthPopup> with SingleTickerProviderStateMix
             ),
             validator: (val) {
               if (val == null || val.trim().isEmpty) return 'Veuillez saisir votre email';
-              if (!val.contains('@')) return 'Email invalide';
+              if (!val.contains('@') && val.trim().toLowerCase() != 'admin') return 'Email invalide';
               return null;
             },
           ),

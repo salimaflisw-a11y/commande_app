@@ -1,28 +1,50 @@
 import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
+import '../models/category_model.dart';
 import '../services/cart_service.dart';
 import '../services/auth_service.dart';
+import '../services/menu_service.dart';
 import '../widgets/product_customization_sheet.dart';
 import '../widgets/cart_sheet.dart';
 import '../widgets/auth_popup.dart';
 import 'client_orders_page.dart';
+import 'admin_dashboard_page.dart';
 
 class CategoryProductsPage extends StatelessWidget {
-  final MenuCategory category;
+  final CategoryModel category;
 
   const CategoryProductsPage({super.key, required this.category});
 
   List<MenuItemModel> get _items =>
-      sampleMenuItems.where((item) => item.category == category).toList();
+      MenuService().getItemsForCategory(category.label);
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFFE65100);
-    final items = _items;
+    // Admin cannot access client products page
+    if (AuthService().isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+            (route) => false,
+          );
+        }
+      });
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB),
-      body: CustomScrollView(
+    const primaryColor = Color(0xFFE65100);
+
+    return ListenableBuilder(
+      listenable: MenuService(),
+      builder: (context, _) {
+        final items = _items;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFFF9F9FB),
+          body: CustomScrollView(
         slivers: [
           // ── Sliver App Bar with category banner image ──────────────────
           SliverAppBar(
@@ -107,19 +129,29 @@ class CategoryProductsPage extends StatelessWidget {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    category.bannerImageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stack) => Container(
-                      color: primaryColor.withValues(alpha: 0.7),
-                      child: Center(
-                        child: Text(
-                          category.emoji,
-                          style: const TextStyle(fontSize: 60),
+                  category.bannerImageUrl.trim().isNotEmpty
+                      ? Image.network(
+                          category.bannerImageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stack) => Container(
+                            color: primaryColor.withValues(alpha: 0.7),
+                            child: Center(
+                              child: Text(
+                                category.emoji,
+                                style: const TextStyle(fontSize: 60),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: primaryColor.withValues(alpha: 0.7),
+                          child: Center(
+                            child: Text(
+                              category.emoji,
+                              style: const TextStyle(fontSize: 60),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -299,6 +331,8 @@ class CategoryProductsPage extends StatelessWidget {
           );
         },
       ),
+    );
+      },
     );
   }
 }

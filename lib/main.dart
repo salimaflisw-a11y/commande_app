@@ -8,6 +8,7 @@ import 'screens/login_page.dart';
 import 'screens/catalog_page.dart';
 import 'screens/order_checkout_page.dart';
 import 'screens/client_orders_page.dart';
+import 'screens/admin_dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,13 +40,15 @@ class CommandeApp extends StatelessWidget {
           foregroundColor: Color(0xFF263238),
         ),
       ),
-      initialRoute: '/catalog',
+      initialRoute: '/',
       routes: {
-        '/': (context) => const RegisterPage(),
+        '/': (context) => const CatalogPage(),
+        '/register': (context) => const RegisterPage(),
         '/login': (context) => const LoginPage(),
         '/catalog': (context) => const CatalogPage(),
         '/checkout': (context) => const OrderCheckoutPage(),
         '/orders': (context) => const ClientOrdersPage(),
+        '/admin': (context) => const AdminDashboardPage(),
       },
       // ── Global anti-theft freeze: freezes the app over whatever page the client is viewing ──
       builder: (context, child) {

@@ -223,7 +223,7 @@ class PdfInvoiceService {
                             ),
                           ),
                           pw.Text(
-                            'Catégorie: ${cartItem.item.category.label}',
+                            'Catégorie: ${cartItem.item.categoryLabel}',
                             style: pw.TextStyle(fontSize: 8, color: PdfColors.grey700),
                           ),
                           // Removed ingredients
