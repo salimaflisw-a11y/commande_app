@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import '../models/menu_item_model.dart';
+import '../models/category_model.dart';
 import '../services/cart_service.dart';
 import '../services/auth_service.dart';
+import '../services/menu_service.dart';
 import '../widgets/cart_sheet.dart';
 import '../widgets/auth_popup.dart';
+import '../widgets/payment_timer_banner.dart';
 import 'category_products_page.dart';
 import 'client_orders_page.dart';
+import 'admin_dashboard_page.dart';
+import 'review_form_page.dart';
 
 class CatalogPage extends StatefulWidget {
   const CatalogPage({super.key});
@@ -16,44 +20,75 @@ class CatalogPage extends StatefulWidget {
 
 class _CatalogPageState extends State<CatalogPage> {
   // Currently selected category (null = All categories)
-  MenuCategory? _selectedCategory;
+  CategoryModel? _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    // Admin cannot access client menu - automatically redirect to AdminDashboardPage
+    if (AuthService().isAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+            (route) => false,
+          );
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Prevent rendering client menu for admin
+    if (AuthService().isAdmin) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     const primaryColor = Color(0xFFE65100);
 
-    // List of categories to display based on top menu selection
-    final displayedCategories = _selectedCategory == null
-        ? MenuCategory.values
-        : [_selectedCategory!];
+    return PopScope(
+      canPop: false,
+      child: ListenableBuilder(
+        listenable: MenuService(),
+        builder: (context, _) {
+          final allCategories = MenuService().categories;
+          final displayedCategories = _selectedCategory == null
+              ? allCategories
+              : allCategories.where((c) => c.id == _selectedCategory!.id).toList();
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF9F9FB),
-      appBar: _buildAppBar(primaryColor),
-      body: Column(
-        children: [
-          // Top Menu with category name buttons
-          _buildTopCategoryButtonsMenu(primaryColor),
+          return Scaffold(
+            backgroundColor: const Color(0xFFF9F9FB),
+            appBar: _buildAppBar(primaryColor),
+            body: Column(
+              children: [
+                // Top Menu with category name buttons
+                _buildTopCategoryButtonsMenu(primaryColor, allCategories),
 
-          // Category Banners List (no products, disabled "Consulter" button)
-          Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: displayedCategories.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final category = displayedCategories[index];
-                return _buildCategoryBannerCard(category, primaryColor);
-              },
+                // Category Banners List (no products, disabled "Consulter" button)
+                Expanded(
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    itemCount: displayedCategories.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final category = displayedCategories[index];
+                      return _buildCategoryBannerCard(category, primaryColor);
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
-      ),
       bottomNavigationBar: ListenableBuilder(
         listenable: CartService(),
         builder: (context, _) {
           final count = CartService().itemCount;
           if (count == 0) return const SizedBox.shrink();
+
           return Container(
             padding: EdgeInsets.fromLTRB(
               16,
@@ -131,10 +166,14 @@ class _CatalogPageState extends State<CatalogPage> {
         },
       ),
     );
-  }
+  },
+),
+);
+}
 
   AppBar _buildAppBar(Color primaryColor) {
     return AppBar(
+      automaticallyImplyLeading: false,
       elevation: 0,
       backgroundColor: Colors.white,
       title: Row(
@@ -168,6 +207,8 @@ class _CatalogPageState extends State<CatalogPage> {
               ),
             ],
           ),
+          const SizedBox(width: 8),
+          const PaymentTimerBanner(),
         ],
       ),
       actions: [
@@ -218,6 +259,13 @@ class _CatalogPageState extends State<CatalogPage> {
             );
           },
         ),
+        IconButton(
+          icon: const Icon(Icons.rate_review_outlined, color: Color(0xFF263238), size: 24),
+          tooltip: 'Donner votre avis',
+          onPressed: () {
+            ReviewFormPage.open(context);
+          },
+        ),
         ListenableBuilder(
           listenable: AuthService(),
           builder: (context, _) {
@@ -226,7 +274,15 @@ class _CatalogPageState extends State<CatalogPage> {
               return Padding(
                 padding: const EdgeInsets.only(right: 6),
                 child: TextButton.icon(
-                  onPressed: () => AuthPopup.show(context, primaryColor: primaryColor),
+                  onPressed: () async {
+                    final ok = await AuthPopup.show(context, primaryColor: primaryColor);
+                    if (ok == true && context.mounted && AuthService().isAdmin) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+                        (route) => false,
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.login_rounded, size: 16),
                   label: const Text('Connexion', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   style: TextButton.styleFrom(
@@ -261,7 +317,7 @@ class _CatalogPageState extends State<CatalogPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          auth.currentUser?.name ?? '',
+                          auth.displayName,
                           style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF263238)),
                         ),
                         Text(
@@ -297,15 +353,15 @@ class _CatalogPageState extends State<CatalogPage> {
                         radius: 12,
                         backgroundColor: primaryColor,
                         child: Text(
-                          (auth.currentUser?.name.isNotEmpty == true)
-                              ? auth.currentUser!.name[0].toUpperCase()
+                          (auth.displayName.isNotEmpty)
+                              ? auth.displayName[0].toUpperCase()
                               : 'C',
                           style: const TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.bold),
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        auth.currentUser?.name.split(' ').first ?? 'Client',
+                        auth.displayName.split(' ').first,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
@@ -325,7 +381,7 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 
   /// Top Menu with buttons of the names for the categories
-  Widget _buildTopCategoryButtonsMenu(Color primaryColor) {
+  Widget _buildTopCategoryButtonsMenu(Color primaryColor, List<CategoryModel> allCategories) {
     return Container(
       color: Colors.white,
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -348,9 +404,9 @@ class _CatalogPageState extends State<CatalogPage> {
             ),
             const SizedBox(width: 8),
 
-            // Specific Category Buttons (Sandwiches, Plates, Coffee, Drinks, Desserts)
-            ...MenuCategory.values.map((cat) {
-              final isSelected = _selectedCategory == cat;
+            // Specific Category Buttons from Firestore / defaults
+            ...allCategories.map((cat) {
+              final isSelected = _selectedCategory?.id == cat.id;
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: _buildCategoryMenuButton(
@@ -375,6 +431,8 @@ class _CatalogPageState extends State<CatalogPage> {
       ),
     );
   }
+
+
 
   Widget _buildCategoryMenuButton({
     required String title,
@@ -415,7 +473,7 @@ class _CatalogPageState extends State<CatalogPage> {
   }
 
   /// Big Category Banner with background photo, title, subtitle and disabled [Consulter] button
-  Widget _buildCategoryBannerCard(MenuCategory cat, Color primaryColor) {
+  Widget _buildCategoryBannerCard(CategoryModel cat, Color primaryColor) {
     return Container(
       height: 175,
       decoration: BoxDecoration(
@@ -560,7 +618,18 @@ class _CatalogPageState extends State<CatalogPage> {
     );
   }
 
-  Widget _buildSafeImage(String url, MenuCategory cat) {
+  Widget _buildSafeImage(String url, CategoryModel cat) {
+    if (url.trim().isEmpty) {
+      return Container(
+        color: const Color(0xFFEEEEEE),
+        child: Center(
+          child: Text(
+            cat.emoji,
+            style: const TextStyle(fontSize: 32),
+          ),
+        ),
+      );
+    }
     return Image.network(
       url,
       fit: BoxFit.cover,

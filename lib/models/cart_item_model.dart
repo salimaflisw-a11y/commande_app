@@ -124,7 +124,7 @@ class CartItemModel {
       'itemId': item.id,
       'itemName': item.name,
       'itemPrice': item.price,
-      'itemCategory': item.category.name,
+      'itemCategory': item.category,
       'itemImageUrl': item.imageUrl,
       'selectedIngredients': selectedIngredients,
       'removedIngredients': removedIngredients,
@@ -138,17 +138,11 @@ class CartItemModel {
 
   factory CartItemModel.fromJson(Map<String, dynamic> json) {
     // Rebuild a minimal MenuItemModel from the snapshot stored in Firestore
-    final catName = json['itemCategory'] as String? ?? '';
-    final category = MenuCategory.values.firstWhere(
-      (c) => c.name == catName || c.label.toLowerCase() == catName.toLowerCase(),
-      orElse: () => MenuCategory.sandwiches,
-    );
-
     final menuItem = MenuItemModel(
       id: json['itemId'] as String? ?? '',
       name: json['itemName'] as String? ?? '',
       price: (json['itemPrice'] as num?)?.toDouble() ?? 0.0,
-      category: category,
+      category: json['itemCategory'] as String? ?? '',
       imageUrl: json['itemImageUrl'] as String? ?? '',
       description: '',
       ingredients: const [],

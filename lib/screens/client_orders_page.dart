@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/order_model.dart';
 import '../services/order_service.dart';
+import '../services/review_service.dart';
+import '../widgets/qr_payment_dialogs.dart';
+import 'review_form_page.dart';
 
 class ClientOrdersPage extends StatelessWidget {
   const ClientOrdersPage({super.key});
@@ -26,6 +29,16 @@ class ClientOrdersPage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 1,
         foregroundColor: const Color(0xFF263238),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.rate_review_outlined, color: primaryColor, size: 22),
+            tooltip: 'Donner mon avis',
+            onPressed: () {
+              ReviewFormPage.open(context);
+            },
+          ),
+          const SizedBox(width: 6),
+        ],
       ),
       body: ListenableBuilder(
         listenable: orderService,
@@ -314,30 +327,136 @@ class _OrderCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8E1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade200),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.payment_outlined, size: 14, color: Color(0xFFE65100)),
-                      SizedBox(width: 4),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (order.isPaid)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F5E9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFA5D6A7)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF2E7D32)),
+                            SizedBox(width: 4),
+                            Text(
+                              'Payée',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2E7D32),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else ...[
+                      InkWell(
+                        onTap: () {
+                          ClientQrScannerDialog.show(context, targetOrderId: order.id);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE65100),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.qr_code_scanner_rounded, size: 14, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                'Scanner QR Caisse',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Text(
-                        'Paiement au comptoir',
+                        'À régler au comptoir',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFE65100),
+                          fontSize: 10,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ],
             ),
+          ),
+          const Divider(height: 1),
+          // ── Review / Evaluation Button ──
+          ListenableBuilder(
+            listenable: ReviewService(),
+            builder: (context, _) {
+              final isReviewed = ReviewService().isOrderReviewed(order.id);
+              final existingReview = ReviewService().getReviewForOrder(order.id);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: isReviewed ? const Color(0xFFF1F8E9) : const Color(0xFFFFF8E1),
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(18)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      isReviewed ? Icons.check_circle_outline_rounded : Icons.star_rate_rounded,
+                      size: 18,
+                      color: isReviewed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        isReviewed
+                            ? 'Avis enregistré : ${existingReview?.overallRating.toStringAsFixed(1) ?? '5.0'}/5 ⭐'
+                            : 'Donner mon avis sur cette expérience',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: isReviewed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        ReviewFormPage.open(context, order: order);
+                      },
+                      icon: Icon(
+                        isReviewed ? Icons.edit_outlined : Icons.rate_review_outlined,
+                        size: 14,
+                        color: isReviewed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                      ),
+                      label: Text(
+                        isReviewed ? 'Modifier' : 'Évaluer',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isReviewed ? const Color(0xFF2E7D32) : const Color(0xFFE65100),
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

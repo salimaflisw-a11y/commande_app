@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/order_model.dart';
+import '../services/payment_timer_service.dart';
+import '../services/review_service.dart';
+import '../widgets/qr_payment_dialogs.dart';
 import 'client_orders_page.dart';
 import 'catalog_page.dart';
+import 'review_form_page.dart';
 
 class OrderSuccessPage extends StatelessWidget {
   final OrderModel order;
@@ -70,6 +74,95 @@ class OrderSuccessPage extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 12),
+
+            // ── 2-Hour Payment Timer Banner ───────────────────────────────────
+            ListenableBuilder(
+              listenable: PaymentTimerService(),
+              builder: (context, _) {
+                final timer = PaymentTimerService();
+                final remaining = timer.remaining;
+                final h = remaining.inHours;
+                final m = remaining.inMinutes.remainder(60).toString().padLeft(2, '0');
+                final s = remaining.inSeconds.remainder(60).toString().padLeft(2, '0');
+                final timeStr = h > 0 ? '${h}h ${m}m ${s}s' : '${m}m ${s}s';
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3E0),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFFB74D)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFF9800).withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.timer_outlined, color: Color(0xFFE65100), size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Délai de règlement : $timeStr',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFFBF360C),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            const Text(
+                              'Veuillez régler au comptoir dans les 2 heures. Passé ce délai, toute nouvelle commande sera bloquée.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Color(0xFF5D4037),
+                                height: 1.3,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () {
+                                ClientQrScannerDialog.show(context, targetOrderId: order.id);
+                              },
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE65100),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.qr_code_scanner_rounded, size: 14, color: Colors.white),
+                                    SizedBox(width: 6),
+                                    Text(
+                                      'Scanner le QR Code caisse',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 18),
 
@@ -381,7 +474,122 @@ class OrderSuccessPage extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
+
+            // ── Client Experience Evaluation Card ──
+            ListenableBuilder(
+              listenable: ReviewService(),
+              builder: (context, _) {
+                final isReviewed = ReviewService().isOrderReviewed(order.id);
+                final existingReview = ReviewService().getReviewForOrder(order.id);
+
+                return Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isReviewed ? const Color(0xFFA5D6A7) : const Color(0xFFFFCC80),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: isReviewed
+                                  ? const Color(0xFFE8F5E9)
+                                  : primaryColor.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isReviewed ? Icons.check_circle_rounded : Icons.rate_review_rounded,
+                              color: isReviewed ? const Color(0xFF2E7D32) : primaryColor,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isReviewed
+                                      ? 'Merci pour votre retour !'
+                                      : 'Votre avis compte beaucoup !',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14.5,
+                                    color: Color(0xFF263238),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  isReviewed
+                                      ? 'Note enregistrée : ${existingReview?.overallRating.toStringAsFixed(1) ?? '5.0'}/5 ⭐'
+                                      : 'Évaluez nourriture, service et rapidité en quelques clics',
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF78909C)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 44,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            ReviewFormPage.open(context, order: order);
+                          },
+                          icon: Icon(
+                            isReviewed ? Icons.edit_outlined : Icons.star_rate_rounded,
+                            size: 18,
+                            color: isReviewed ? const Color(0xFF2E7D32) : primaryColor,
+                          ),
+                          label: Text(
+                            isReviewed
+                                ? 'Modifier mon évaluation'
+                                : 'Évaluer mon expérience',
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.bold,
+                              color: isReviewed ? const Color(0xFF2E7D32) : primaryColor,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: isReviewed
+                                  ? const Color(0xFFA5D6A7)
+                                  : primaryColor.withValues(alpha: 0.5),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            backgroundColor: isReviewed
+                                ? const Color(0xFFE8F5E9).withValues(alpha: 0.5)
+                                : primaryColor.withValues(alpha: 0.04),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            const SizedBox(height: 20),
 
             // ── NAVIGATION ACTIONS ──────────────────────────────────────────
             SizedBox(

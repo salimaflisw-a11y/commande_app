@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'register_page.dart';
 import 'catalog_page.dart';
-import 'client_orders_page.dart';
+import 'admin_dashboard_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -35,7 +35,8 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-    final success = await AuthService().login(
+    final auth = AuthService();
+    final success = await auth.login(
       _emailController.text.trim(),
       _passwordController.text,
     );
@@ -48,28 +49,33 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mot de passe incorrect. Veuillez réessayer.'),
-          backgroundColor: Colors.red,
+        SnackBar(
+          content: Text(
+            auth.lastAuthError ??
+                'Échec de la connexion. Veuillez vérifier vos identifiants.',
+          ),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
         ),
       );
       return;
     }
 
-    final auth = AuthService();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Connexion réussie pour ${auth.currentUser?.name} !'),
+        content: Text('Connexion réussie pour ${auth.displayName} !'),
         backgroundColor: Colors.green,
       ),
     );
 
-    // Redirect admin to the orders management page, clients to the catalog
+    // Redirect admin to AdminDashboardPage, clients to catalog
     if (auth.isAdmin) {
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
-          builder: (context) => const ClientOrdersPage(),
+          builder: (context) => const AdminDashboardPage(),
         ),
+        (route) => false,
       );
     } else {
       Navigator.of(context).pushReplacement(

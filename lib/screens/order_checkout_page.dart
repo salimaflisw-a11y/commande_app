@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/cart_service.dart';
 import '../services/order_service.dart';
 import '../services/auth_service.dart';
+import '../services/payment_timer_service.dart';
+import '../widgets/unpaid_blocked_overlay.dart';
 import 'order_success_page.dart';
 
 class OrderCheckoutPage extends StatefulWidget {
@@ -16,7 +18,6 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
   late final TextEditingController _tableController;
-  late final TextEditingController _addressController;
   late final TextEditingController _notesController;
 
   final String _selectedOrderType = 'Sur place';
@@ -30,7 +31,6 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
     _nameController = TextEditingController(text: user?.name ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
     _tableController = TextEditingController(text: 'Table 1');
-    _addressController = TextEditingController(text: user?.address ?? '');
     _notesController = TextEditingController();
   }
 
@@ -39,12 +39,33 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
     _nameController.dispose();
     _phoneController.dispose();
     _tableController.dispose();
-    _addressController.dispose();
     _notesController.dispose();
     super.dispose();
   }
 
   Future<void> _handleConfirmOrder() async {
+    final orderService = OrderService();
+    final timerService = PaymentTimerService();
+    final isBlocked = timerService.isBlocked || orderService.isCurrentClientBlocked;
+
+    if (isBlocked) {
+      final unpaidOrder = orderService.blockingUnpaidOrder ?? timerService.trackedOrder;
+      if (unpaidOrder != null) {
+        UnpaidBlockedDialog.show(context, order: unpaidOrder);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '⚠️ Action bloquée : vous devez régler vos achats précédents au comptoir avant de commander.',
+            ),
+            backgroundColor: Color(0xFFC62828),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -190,78 +211,99 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
       ),
 
       // ── BOTTOM FLOATING CONFIRMATION BUTTON ──────────────────────────────
-      bottomSheet: Container(
-        padding: EdgeInsets.fromLTRB(18, 12, 18, 12 + MediaQuery.of(context).padding.bottom),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, -3),
+      bottomSheet: ListenableBuilder(
+        listenable: Listenable.merge([PaymentTimerService(), OrderService()]),
+        builder: (context, _) {
+          final orderService = OrderService();
+          final timerService = PaymentTimerService();
+          final isBlocked = timerService.isBlocked || orderService.isCurrentClientBlocked;
+
+          return Container(
+            padding: EdgeInsets.fromLTRB(18, 12, 18, 12 + MediaQuery.of(context).padding.bottom),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 10,
+                  offset: const Offset(0, -3),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: ElevatedButton(
-            onPressed: _isSubmitting ? null : _handleConfirmOrder,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 3,
-            ),
-            child: _isSubmitting
-                ? const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      ),
-                      SizedBox(width: 12),
-                      Text(
-                        'Envoi au restaurant en cours...',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  )
-                : Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Row(
+            child: SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: _isSubmitting ? null : _handleConfirmOrder,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isBlocked ? const Color(0xFFC62828) : primaryColor,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 3,
+                ),
+                child: isBlocked
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.send_rounded, size: 20),
+                          Icon(Icons.lock_clock_rounded, size: 20),
                           SizedBox(width: 8),
                           Text(
-                            'Valider & Envoyer',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            'Valider la commande (Impayé)',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                           ),
                         ],
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white24,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${cart.totalAmount.toStringAsFixed(2)} €',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-          ),
-        ),
+                      )
+                    : (_isSubmitting
+                          ? const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  'Envoi au restaurant en cours...',
+                                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.send_rounded, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Valider & Envoyer',
+                                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white24,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '${cart.totalAmount.toStringAsFixed(2)} €',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            )),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

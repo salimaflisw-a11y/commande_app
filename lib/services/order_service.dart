@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
 import '../models/cart_item_model.dart';
 import 'cart_service.dart';
+import 'payment_timer_service.dart';
 
 class OrderService extends ChangeNotifier {
   static final OrderService _instance = OrderService._internal();
@@ -28,6 +29,10 @@ class OrderService extends ChangeNotifier {
   OrderModel? get blockingUnpaidOrder =>
       _orders.where((o) => o.clientLeftWithoutPaying).firstOrNull;
 
+  /// True when the client has any confirmed unpaid order (regardless of timer).
+  bool get hasAnyUnpaidOrder =>
+      _orders.any((o) => o.isUnpaid && !o.isRejected);
+
   /// Start listening to orders in real time.
   /// Pass [forUserId] to filter by client; omit to get all (admin mode).
   void listenToOrders({String? forUserId}) {
@@ -45,10 +50,40 @@ class OrderService extends ChangeNotifier {
       _orders = snapshot.docs.map((doc) {
         return OrderModel.fromJson({...doc.data(), 'id': doc.id});
       }).toList();
+
+      // Auto-resume countdown for any existing unpaid order that has a deadline stored.
+      _autoResumePaymentTimer();
+
+      // Clear timer if the latest tracked order was paid.
+      _autoClearTimerIfPaid();
+
       notifyListeners();
     }, onError: (e) {
       debugPrint('⚠️ [OrderService] Firestore listen error: $e');
     });
+  }
+
+  /// Auto-resumes the payment countdown for any unpaid order that already has
+  /// a stored deadline (e.g. after a browser refresh).
+  void _autoResumePaymentTimer() {
+    final timerService = PaymentTimerService();
+    final unpaidWithDeadline = _orders.where(
+      (o) => o.isUnpaid && o.paymentDeadline != null && !o.clientLeftWithoutPaying,
+    );
+    if (unpaidWithDeadline.isNotEmpty) {
+      timerService.resumeTimerForOrder(unpaidWithDeadline.first);
+    }
+  }
+
+  /// Clears the payment timer when the tracked order has been marked as paid.
+  void _autoClearTimerIfPaid() {
+    final timerService = PaymentTimerService();
+    final tracked = timerService.trackedOrder;
+    if (tracked == null) return;
+    final inFirestore = _orders.where((o) => o.id == tracked.id).firstOrNull;
+    if (inFirestore != null && inFirestore.isPaid) {
+      timerService.clearTimer();
+    }
   }
 
   /// Creates and submits a new order to Firestore
@@ -112,6 +147,9 @@ class OrderService extends ChangeNotifier {
     cart.clear();
     notifyListeners();
 
+    // Start the 2-hour payment countdown for this new order.
+    await PaymentTimerService().startTimerForOrder(order);
+
     debugPrint(
         '🔔 [ADMIN COMMANDE] Reçue (${order.status}) : ${order.id} | '
         'Client: ${order.customerName} | Table: ${order.tableNumber ?? "N/A"} | '
@@ -155,6 +193,7 @@ class OrderService extends ChangeNotifier {
       'paymentStatus': 'paid',
       'clientLeftWithoutPaying': false,
     });
+    PaymentTimerService().clearTimer();
     debugPrint(
         '✅ [PAIEMENT COMPTOIR EFFECTUÉ] Commande $orderId réglée. Application débloquée.');
   }

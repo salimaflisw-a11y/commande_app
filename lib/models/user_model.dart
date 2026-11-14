@@ -3,19 +3,17 @@ class UserModel {
   final String name;
   final String email;
   final String phone;
-  final String address;
-  final String role; // 'client' or 'responsable'
+  final String role; // 'client' or 'admin'
   final DateTime createdAt;
 
-  const UserModel({
+  UserModel({
     required this.id,
-    required this.name,
+    this.name = '',
     required this.email,
-    required this.phone,
-    required this.address,
-    this.role = 'client',
-    required this.createdAt,
-  });
+    this.phone = '',
+    required this.role,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
 
   Map<String, dynamic> toJson() {
     return {
@@ -23,23 +21,31 @@ class UserModel {
       'name': name,
       'email': email,
       'phone': phone,
-      'address': address,
       'role': role,
       'createdAt': createdAt.toIso8601String(),
     };
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    final roleRaw = json['role']?.toString().trim();
+    final roleVal = (roleRaw != null && roleRaw.isNotEmpty) ? roleRaw : 'client';
+
+    DateTime createdAtDate = DateTime.now();
+    final createdAtRaw = json['createdAt']?.toString();
+    if (createdAtRaw != null && createdAtRaw.isNotEmpty) {
+      final parsed = DateTime.tryParse(createdAtRaw);
+      if (parsed != null) {
+        createdAtDate = parsed;
+      }
+    }
+
     return UserModel(
-      id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? '',
-      email: json['email'] as String? ?? '',
-      phone: json['phone'] as String? ?? '',
-      address: json['address'] as String? ?? '',
-      role: json['role'] as String? ?? 'client',
-      createdAt: json['createdAt'] != null
-          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
-          : DateTime.now(),
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      phone: json['phone']?.toString() ?? '',
+      role: roleVal,
+      createdAt: createdAtDate,
     );
   }
 }

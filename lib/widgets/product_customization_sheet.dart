@@ -1,25 +1,11 @@
 import 'package:flutter/material.dart';
 import '../models/menu_item_model.dart';
 import '../models/cart_item_model.dart';
+import '../models/supplement_model.dart';
 import '../services/cart_service.dart';
+import '../services/menu_service.dart';
 import '../services/auth_service.dart';
 import 'auth_popup.dart';
-
-class AvailableSupplement {
-  final String id;
-  final String name;
-  final String category;
-  final String icon;
-  final double price;
-
-  const AvailableSupplement({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.icon,
-    required this.price,
-  });
-}
 
 class ProductCustomizationSheet extends StatefulWidget {
   final MenuItemModel item;
@@ -60,157 +46,23 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
   String _selectedSupplementTab = 'Tous';
   final TextEditingController _noteController = TextEditingController();
 
-  static const List<AvailableSupplement> _allAvailableSupplements = [
-    // ── SAUCES ─────────────────────────────────────────────────────────────
-    AvailableSupplement(
-      id: 'sauce_alg',
-      name: 'Sauce Algérienne',
-      category: 'Sauces',
-      icon: '🌶️',
-      price: 0.50,
-    ),
-    AvailableSupplement(
-      id: 'sauce_bbq',
-      name: 'Sauce Barbecue Fumée',
-      category: 'Sauces',
-      icon: '🍯',
-      price: 0.50,
-    ),
-    AvailableSupplement(
-      id: 'sauce_mayo',
-      name: 'Mayonnaise Gourmet',
-      category: 'Sauces',
-      icon: '🥚',
-      price: 0.50,
-    ),
-    AvailableSupplement(
-      id: 'sauce_fromage',
-      name: 'Sauce Fromagère Maison',
-      category: 'Sauces',
-      icon: '🧀',
-      price: 0.80,
-    ),
-    AvailableSupplement(
-      id: 'sauce_ketchup',
-      name: 'Ketchup Épicé',
-      category: 'Sauces',
-      icon: '🥫',
-      price: 0.50,
-    ),
-
-    // ── FRITES & ACCOMPAGNEMENTS ───────────────────────────────────────────
-    AvailableSupplement(
-      id: 'frites_portion',
-      name: 'Portion Frites Dorées',
-      category: 'Frites & Accomp.',
-      icon: '🍟',
-      price: 2.00,
-    ),
-    AvailableSupplement(
-      id: 'frites_cheddar',
-      name: 'Frites Cheddar & Bacon',
-      category: 'Frites & Accomp.',
-      icon: '🥓',
-      price: 3.50,
-    ),
-    AvailableSupplement(
-      id: 'potatos',
-      name: 'Potatos Épicées aux herbes',
-      category: 'Frites & Accomp.',
-      icon: '🥔',
-      price: 2.50,
-    ),
-    AvailableSupplement(
-      id: 'nuggets',
-      name: 'Nuggets Croustillants (x4)',
-      category: 'Frites & Accomp.',
-      icon: '🍗',
-      price: 2.80,
-    ),
-    AvailableSupplement(
-      id: 'onion_rings',
-      name: 'Onion Rings (x6)',
-      category: 'Frites & Accomp.',
-      icon: '🧅',
-      price: 2.20,
-    ),
-
-    // ── BOISSONS ───────────────────────────────────────────────────────────
-    AvailableSupplement(
-      id: 'boisson_coca',
-      name: 'Coca-Cola 33cl',
-      category: 'Boissons',
-      icon: '🥤',
-      price: 1.80,
-    ),
-    AvailableSupplement(
-      id: 'boisson_zero',
-      name: 'Coca Zéro 33cl',
-      category: 'Boissons',
-      icon: '🥤',
-      price: 1.80,
-    ),
-    AvailableSupplement(
-      id: 'boisson_eau',
-      name: 'Eau Minérale 50cl',
-      category: 'Boissons',
-      icon: '💧',
-      price: 1.00,
-    ),
-    AvailableSupplement(
-      id: 'boisson_orange',
-      name: 'Jus d\'Orange Pressé Minute',
-      category: 'Boissons',
-      icon: '🍊',
-      price: 2.50,
-    ),
-    AvailableSupplement(
-      id: 'boisson_icetea',
-      name: 'Ice Tea Pêche 33cl',
-      category: 'Boissons',
-      icon: '🍑',
-      price: 1.80,
-    ),
-
-    // ── EXTRAS & FROMAGE ───────────────────────────────────────────────────
-    AvailableSupplement(
-      id: 'extra_cheddar',
-      name: 'Double Cheddar Fondu',
-      category: 'Extras',
-      icon: '🧀',
-      price: 1.00,
-    ),
-    AvailableSupplement(
-      id: 'extra_bacon',
-      name: 'Bacon Grillé Croustillant',
-      category: 'Extras',
-      icon: '🥓',
-      price: 1.50,
-    ),
-    AvailableSupplement(
-      id: 'extra_avocat',
-      name: 'Tranches d\'Avocat Frais',
-      category: 'Extras',
-      icon: '🥑',
-      price: 1.20,
-    ),
-    AvailableSupplement(
-      id: 'extra_jalapeno',
-      name: 'Piments Jalapeños Doux',
-      category: 'Extras',
-      icon: '🌶️',
-      price: 0.60,
-    ),
-  ];
+  List<SupplementModel> get _allAvailableSupplements =>
+      MenuService().availableSupplements;
 
   @override
   void initState() {
     super.initState();
     _selectedBaseIngredients = Set.from(widget.item.ingredients);
+    MenuService().addListener(_onMenuChanged);
+  }
+
+  void _onMenuChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    MenuService().removeListener(_onMenuChanged);
     _noteController.dispose();
     super.dispose();
   }
@@ -329,11 +181,17 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
     final mediaQuery = MediaQuery.of(context);
 
     // Filter supplements by active category tab
-    final displayedSupplements = _selectedSupplementTab == 'Tous'
-        ? _allAvailableSupplements
-        : _allAvailableSupplements
-            .where((s) => s.category == _selectedSupplementTab)
-            .toList();
+    final allSupplements = _allAvailableSupplements;
+    final supplementTabs = [
+      'Tous',
+      ...MenuService().supplementGroups(allSupplements),
+    ];
+    final activeTab = supplementTabs.contains(_selectedSupplementTab)
+        ? _selectedSupplementTab
+        : 'Tous';
+    final displayedSupplements = activeTab == 'Tous'
+        ? allSupplements
+        : allSupplements.where((s) => s.category == activeTab).toList();
 
     return Container(
       constraints: BoxConstraints(
@@ -448,7 +306,7 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              '${item.category.emoji} ${item.category.label}',
+                              '${MenuService().emojiForCategory(item.categoryLabel)} ${item.categoryLabel}'.trim(),
                               style: TextStyle(
                                 fontSize: 13,
                                 color: Colors.grey.shade600,
@@ -653,6 +511,7 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
                   const SizedBox(height: 16),
 
                   // ── SECTION 2: ADD SUPPLEMENTS WITH QUANTITY COUNTER ────────
+                  if (allSupplements.isNotEmpty) ...[
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -669,7 +528,7 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
                           ),
                           SizedBox(height: 2),
                           Text(
-                            'Sauces, frites, boissons & extras avec quantité modifiable',
+                            'Choisissez vos extras avec quantité modifiable',
                             style: TextStyle(
                               fontSize: 11,
                               color: Color(0xFF78909C),
@@ -702,14 +561,8 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: [
-                        'Tous',
-                        'Sauces',
-                        'Frites & Accomp.',
-                        'Boissons',
-                        'Extras'
-                      ].map((tab) {
-                        final isSelected = _selectedSupplementTab == tab;
+                      children: supplementTabs.map((tab) {
+                        final isSelected = activeTab == tab;
                         return Padding(
                           padding: const EdgeInsets.only(right: 6),
                           child: ChoiceChip(
@@ -879,6 +732,8 @@ class _ProductCustomizationSheetState extends State<ProductCustomizationSheet> {
                       );
                     }).toList(),
                   ),
+
+                  ],
 
                   const SizedBox(height: 18),
 

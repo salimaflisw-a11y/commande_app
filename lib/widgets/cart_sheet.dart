@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/cart_service.dart';
 import '../services/auth_service.dart';
+import '../services/order_service.dart';
+import '../services/payment_timer_service.dart';
 import '../screens/order_checkout_page.dart';
 import 'auth_popup.dart';
+import 'unpaid_blocked_overlay.dart';
 
 class CartSheet extends StatelessWidget {
   final Color primaryColor;
@@ -415,58 +418,98 @@ class CartSheet extends StatelessWidget {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            if (!AuthService().isLoggedIn) {
-                              AuthPopup.show(
-                                context,
-                                primaryColor: primaryColor,
-                                customMessage:
-                                    'Pour valider votre commande, veuillez vous connecter ou créer un compte client.',
-                                onSuccess: () {
-                                  Navigator.of(context).pop();
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (_) => const OrderCheckoutPage(),
-                                    ),
+                      ListenableBuilder(
+                        listenable: Listenable.merge([PaymentTimerService(), OrderService()]),
+                        builder: (context, _) {
+                          final orderService = OrderService();
+                          final timerService = PaymentTimerService();
+                          final isBlocked = timerService.isBlocked || orderService.isCurrentClientBlocked;
+
+                          return SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                if (isBlocked) {
+                                  final unpaidOrder = orderService.blockingUnpaidOrder ?? timerService.trackedOrder;
+                                  if (unpaidOrder != null) {
+                                    UnpaidBlockedDialog.show(context, order: unpaidOrder);
+                                  } else {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          '⚠️ Vous avez une commande impayée. Veuillez la régler au comptoir avant de valider une nouvelle commande.',
+                                        ),
+                                        backgroundColor: Color(0xFFC62828),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                  return;
+                                }
+
+                                if (!AuthService().isLoggedIn) {
+                                  AuthPopup.show(
+                                    context,
+                                    primaryColor: primaryColor,
+                                    customMessage:
+                                        'Pour valider votre commande, veuillez vous connecter ou créer un compte client.',
+                                    onSuccess: () {
+                                      Navigator.of(context).pop();
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => const OrderCheckoutPage(),
+                                        ),
+                                      );
+                                    },
                                   );
-                                },
-                              );
-                              return;
-                            }
-                            Navigator.of(context).pop();
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const OrderCheckoutPage(),
-                              ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 2,
-                          ),
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.receipt_long_rounded, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Consulter l\'addition & Commander',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.bold,
+                                  return;
+                                }
+                                Navigator.of(context).pop();
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => const OrderCheckoutPage(),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isBlocked ? const Color(0xFFC62828) : primaryColor,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
                                 ),
+                                elevation: 2,
                               ),
-                            ],
-                          ),
-                        ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  if (isBlocked) ...[
+                                    const Icon(Icons.lock_clock_rounded, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Valider la commande (Impayé)',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.3,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    const Icon(Icons.receipt_long_rounded, size: 20),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Consulter l\'addition & Commander',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),

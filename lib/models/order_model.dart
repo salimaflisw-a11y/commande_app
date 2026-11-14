@@ -28,6 +28,10 @@ class OrderModel {
 
   final bool isSentToManager;
 
+  /// Deadline by which the client must pay (set when order is confirmed).
+  /// null means no deadline set yet.
+  final DateTime? paymentDeadline;
+
   const OrderModel({
     required this.id,
     required this.createdAt,
@@ -47,6 +51,7 @@ class OrderModel {
     this.paymentStatus = 'unpaid',
     this.clientLeftWithoutPaying = false,
     this.isSentToManager = true,
+    this.paymentDeadline,
   });
 
   int get totalItemCount =>
@@ -58,6 +63,24 @@ class OrderModel {
   bool get isPaid => paymentStatus == 'paid';
   bool get isUnpaid => paymentStatus == 'unpaid';
   bool get isBlockedDueToUnpaid => clientLeftWithoutPaying;
+
+  /// True when a payment deadline exists and has already passed without payment.
+  bool get isPaymentOverdue {
+    if (isPaid) return false;
+    if (paymentDeadline == null) return false;
+    return DateTime.now().isAfter(paymentDeadline!);
+  }
+
+  /// Remaining time until the payment deadline (null if no deadline).
+  Duration? get remainingPaymentTime {
+    if (paymentDeadline == null) return null;
+    final remaining = paymentDeadline!.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// True if the client has an active (not yet expired) payment deadline.
+  bool get hasActivePaymentTimer =>
+      !isPaid && paymentDeadline != null && !isPaymentOverdue;
 
   Map<String, dynamic> toJson() {
     return {
@@ -78,6 +101,7 @@ class OrderModel {
       'paymentStatus': paymentStatus,
       'clientLeftWithoutPaying': clientLeftWithoutPaying,
       'isSentToManager': isSentToManager,
+      'paymentDeadline': paymentDeadline?.toIso8601String(),
     };
   }
 
@@ -113,6 +137,9 @@ class OrderModel {
       clientLeftWithoutPaying:
           json['clientLeftWithoutPaying'] as bool? ?? false,
       isSentToManager: json['isSentToManager'] as bool? ?? true,
+      paymentDeadline: json['paymentDeadline'] != null
+          ? parseDate(json['paymentDeadline'])
+          : null,
     );
   }
 
@@ -135,6 +162,8 @@ class OrderModel {
     String? paymentStatus,
     bool? clientLeftWithoutPaying,
     bool? isSentToManager,
+    DateTime? paymentDeadline,
+    bool clearPaymentDeadline = false,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -156,6 +185,8 @@ class OrderModel {
       clientLeftWithoutPaying:
           clientLeftWithoutPaying ?? this.clientLeftWithoutPaying,
       isSentToManager: isSentToManager ?? this.isSentToManager,
+      paymentDeadline:
+          clearPaymentDeadline ? null : (paymentDeadline ?? this.paymentDeadline),
     );
   }
 }
