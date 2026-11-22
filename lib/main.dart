@@ -10,9 +10,15 @@ import 'screens/admin_dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    debugPrint("Initializing Firebase...");
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint("Firebase initialized successfully.");
+  } catch (e, stack) {
+    debugPrint("Firebase initialization failed: $e\n$stack");
+  }
   runApp(const CommandeApp());
 }
 
