@@ -9,35 +9,64 @@ import '../services/payment_timer_service.dart';
 /// Helper formatting prefix for payment QR payload
 const String kPaymentQrPrefix = 'RESTO_PAY:';
 
-/// Generates the payload encoded in the cashier's QR code
-String generatePaymentQrData(OrderModel order) {
-  return '$kPaymentQrPrefix${order.id}';
+/// Structured payload encoded inside the cashier's payment QR code
+class PaymentQrPayload {
+  final String orderId;
+  final String securityCode;
+
+  const PaymentQrPayload({
+    required this.orderId,
+    required this.securityCode,
+  });
 }
 
-/// Parses an order ID from the scanned QR string
-String? parseOrderIdFromQr(String rawData) {
+/// Generates the payload encoded in the cashier's QR code.
+/// Format: `RESTO_PAY:<orderId>:<securityCode>`
+String generatePaymentQrData(OrderModel order, String securityCode) {
+  return '$kPaymentQrPrefix${order.id}:$securityCode';
+}
+
+/// Strictly parses the cashier payment QR string.
+/// Rejects arbitrary text, URLs, non-cashier barcodes, or raw order IDs.
+PaymentQrPayload? parsePaymentQrData(String rawData) {
   final trimmed = rawData.trim();
+
+  // Format 1: RESTO_PAY:<orderId>:<securityCode>
   if (trimmed.startsWith(kPaymentQrPrefix)) {
-    return trimmed.substring(kPaymentQrPrefix.length).trim();
+    final body = trimmed.substring(kPaymentQrPrefix.length).trim();
+    final parts = body.split(':');
+    if (parts.length >= 2) {
+      final orderId = parts[0].trim();
+      final securityCode = parts[1].trim();
+      if (orderId.isNotEmpty && securityCode.isNotEmpty) {
+        return PaymentQrPayload(orderId: orderId, securityCode: securityCode);
+      }
+    }
   }
-  // Also support JSON payload format
+
+  // Format 2: JSON payload {"orderId": "...", "securityCode": "..."}
   if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
     try {
       final map = jsonDecode(trimmed) as Map<String, dynamic>;
-      if (map.containsKey('orderId')) return map['orderId']?.toString();
+      final orderId = map['orderId']?.toString().trim();
+      final securityCode = map['securityCode']?.toString().trim();
+      if (orderId != null &&
+          orderId.isNotEmpty &&
+          securityCode != null &&
+          securityCode.isNotEmpty) {
+        return PaymentQrPayload(orderId: orderId, securityCode: securityCode);
+      }
     } catch (_) {}
   }
-  // Direct order ID fallback
-  if (trimmed.isNotEmpty && !trimmed.contains(' ')) {
-    return trimmed;
-  }
+
+  // Explicitly return null for any non-cashier QR payload
   return null;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // 1. CASHIER MODAL: Displays the Payment QR Code to the client
 // ══════════════════════════════════════════════════════════════════════════════
-class CashierQrPaymentDialog extends StatelessWidget {
+class CashierQrPaymentDialog extends StatefulWidget {
   final OrderModel order;
 
   const CashierQrPaymentDialog({super.key, required this.order});
@@ -51,9 +80,54 @@ class CashierQrPaymentDialog extends StatelessWidget {
   }
 
   @override
+  State<CashierQrPaymentDialog> createState() => _CashierQrPaymentDialogState();
+}
+
+class _CashierQrPaymentDialogState extends State<CashierQrPaymentDialog> {
+  String? _securityCode;
+  bool _isLoadingCode = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _initSecurityCode();
+  }
+
+  Future<void> _initSecurityCode() async {
+    final existing = widget.order.paymentSecurityCode;
+    if (existing != null && existing.trim().isNotEmpty) {
+      if (mounted) {
+        setState(() {
+          _securityCode = existing;
+          _isLoadingCode = false;
+        });
+      }
+    } else {
+      try {
+        final code = await OrderService().ensurePaymentSecurityCode(widget.order);
+        if (mounted) {
+          setState(() {
+            _securityCode = code;
+            _isLoadingCode = false;
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _isLoadingCode = false;
+          });
+        }
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFFE65100);
-    final qrData = generatePaymentQrData(order);
+    final securityCode = _securityCode ?? widget.order.paymentSecurityCode ?? '';
+    final qrData = securityCode.isNotEmpty
+        ? generatePaymentQrData(widget.order, securityCode)
+        : '';
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -99,7 +173,7 @@ class CashierQrPaymentDialog extends StatelessWidget {
               const SizedBox(height: 8),
 
               Text(
-                'Présentez ce QR Code au client pour valider son règlement et stopper le minuteur de 2 heures.',
+                'Présentez ce QR Code sécurisé au client pour valider son règlement et stopper son minuteur.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 12,
@@ -124,7 +198,7 @@ class CashierQrPaymentDialog extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Commande : ${order.id}',
+                          'Commande : ${widget.order.id}',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -133,7 +207,7 @@ class CashierQrPaymentDialog extends StatelessWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Client : ${order.customerName} (${order.tableNumber ?? "Comptoir"})',
+                          'Client : ${widget.order.customerName} (${widget.order.tableNumber ?? "Comptoir"})',
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.grey.shade600,
@@ -149,7 +223,7 @@ class CashierQrPaymentDialog extends StatelessWidget {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '${order.totalTtc.toStringAsFixed(2)} €',
+                        '${widget.order.totalTtc.toStringAsFixed(2)} €',
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
@@ -177,57 +251,73 @@ class CashierQrPaymentDialog extends StatelessWidget {
                   ],
                   border: Border.all(color: Colors.grey.shade200),
                 ),
-                child: QrImageView(
-                  data: qrData,
-                  version: QrVersions.auto,
-                  size: 210.0,
-                  gapless: false,
-                  embeddedImageStyle: const QrEmbeddedImageStyle(
-                    size: Size(36, 36),
-                  ),
-                ),
+                child: _isLoadingCode
+                    ? const SizedBox(
+                        height: 210,
+                        width: 210,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    : QrImageView(
+                        data: qrData,
+                        version: QrVersions.auto,
+                        size: 210.0,
+                        gapless: false,
+                        embeddedImageStyle: const QrEmbeddedImageStyle(
+                          size: Size(36, 36),
+                        ),
+                      ),
               ),
               const SizedBox(height: 14),
 
-              // Manual Code for fallback
+              // Secret cashier verification code
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF3E0),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: const Color(0xFFFFB74D)),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Column(
                   children: [
-                    const Icon(Icons.key_rounded, size: 14, color: primaryColor),
-                    const SizedBox(width: 6),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.security_rounded, size: 16, color: primaryColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Code secret caisse : ${securityCode.isNotEmpty ? securityCode : "En attente..."}',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: primaryColor,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
                     Text(
-                      'Code de secours : ${order.id}',
-                      style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.bold,
-                        color: primaryColor,
-                        letterSpacing: 0.5,
-                      ),
+                      'Ce code secret est réservé au caissier. Communiquez-le uniquement si la caméra du client ne fonctionne pas.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade700),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18),
 
               // Cashier direct validation button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   onPressed: () async {
-                    await OrderService().settlePaymentAndUnblock(order.id);
+                    await OrderService().settlePaymentAndUnblock(widget.order.id);
                     if (context.mounted) {
                       Navigator.of(context).pop();
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            'Paiement validé pour la commande ${order.id} ! Le minuteur a été stoppé.',
+                            'Paiement validé pour la commande ${widget.order.id} ! Le client a été débloqué.',
                           ),
                           backgroundColor: const Color(0xFF2E7D32),
                           behavior: SnackBarBehavior.floating,
@@ -292,9 +382,9 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
   @override
   void initState() {
     super.initState();
-    if (widget.targetOrderId != null) {
-      _manualInputController.text = widget.targetOrderId!;
-    }
+    // Security: Do NOT pre-fill the order ID. The client must either scan the genuine
+    // cashier QR code or input the secret cashier code given verbally by the cashier.
+    _manualInputController.text = '';
   }
 
   @override
@@ -307,10 +397,44 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
   Future<void> _handleScannedCode(String rawCode) async {
     if (_isProcessing) return;
 
-    final parsedOrderId = parseOrderIdFromQr(rawCode);
-    if (parsedOrderId == null || parsedOrderId.isEmpty) {
+    final trimmed = rawCode.trim();
+    if (trimmed.isEmpty) {
       _showFeedback(
-        'Format de QR Code invalide. Veuillez scanner le QR fourni par le caissier.',
+        'Veuillez scanner le QR Code du caissier ou saisir son code secret.',
+        isError: true,
+      );
+      return;
+    }
+
+    // Try parsing as full cashier QR payload
+    PaymentQrPayload? payload = parsePaymentQrData(trimmed);
+
+    // If not a full QR payload, check if user manually entered the cashier secret code
+    if (payload == null && widget.targetOrderId != null) {
+      final upper = trimmed.toUpperCase();
+      // Cashier codes start with SEC- or are 4-10 alphanumeric characters
+      if (upper.startsWith('SEC-') || (upper.length >= 4 && upper.length <= 12 && !upper.contains(' '))) {
+        payload = PaymentQrPayload(
+          orderId: widget.targetOrderId!,
+          securityCode: upper,
+        );
+      }
+    }
+
+    if (payload == null) {
+      _showFeedback(
+        'QR Code invalide. Veuillez scanner le QR Code officiel affiché par le caissier au comptoir.',
+        isError: true,
+      );
+      return;
+    }
+
+    // Ensure the scanned QR matches the client's current target order
+    if (widget.targetOrderId != null &&
+        widget.targetOrderId!.isNotEmpty &&
+        widget.targetOrderId != payload.orderId) {
+      _showFeedback(
+        'Ce QR Code correspond à la commande #${payload.orderId}, et non à votre commande en cours (#${widget.targetOrderId}).',
         isError: true,
       );
       return;
@@ -321,23 +445,27 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
     });
 
     try {
-      // Settle payment in Firestore & unblock
-      await OrderService().settlePaymentAndUnblock(parsedOrderId);
+      // Validate payment with the secret cashier code in Firestore
+      await OrderService().settlePaymentWithVerification(
+        orderId: payload.orderId,
+        securityCode: payload.securityCode,
+      );
 
-      // Stop the 2-hour payment countdown
+      // Stop the payment countdown
       PaymentTimerService().clearTimer();
 
       if (!mounted) return;
 
       Navigator.of(context).pop(true);
 
-      _showSuccessDialog(parsedOrderId);
+      _showSuccessDialog(payload.orderId);
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isProcessing = false;
       });
-      _showFeedback('Erreur lors de la validation : $e', isError: true);
+      final errorMsg = e.toString().replaceFirst('Exception: ', '');
+      _showFeedback(errorMsg, isError: true);
     }
   }
 
@@ -345,9 +473,10 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? const Color(0xFFC62828) : const Color(0xFF2E7D32),
+        backgroundColor:
+            isError ? const Color(0xFFC62828) : const Color(0xFF2E7D32),
         behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 3),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -365,7 +494,7 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
           ],
         ),
         content: Text(
-          'Votre règlement pour la commande $orderId a été enregistré avec succès.\n\nLe minuteur de 2 heures a été arrêté et vous pouvez commander à nouveau !',
+          'Votre règlement pour la commande $orderId a été vérifié et confirmé auprès de la caisse.\n\nVous êtes débloqué et vous pouvez commander à nouveau !',
           style: const TextStyle(fontSize: 13.5, height: 1.4),
         ),
         actions: [
@@ -424,11 +553,31 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
               const SizedBox(height: 6),
 
               Text(
-                'Scannez le QR Code affiché par le caissier au comptoir pour valider votre paiement et stopper le minuteur.',
+                'Scannez le QR Code officiel affiché par le caissier au comptoir pour valider votre paiement et débloquer vos commandes.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade700, height: 1.3),
               ),
-              const SizedBox(height: 16),
+
+              if (widget.targetOrderId != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Text(
+                    'Commande ciblée : #${widget.targetOrderId}',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
 
               // Camera viewfinder or fallback
               ClipRRect(
@@ -500,14 +649,15 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
               ),
               const SizedBox(height: 14),
 
-              // Manual code entry fallback (ideal for desktop / testing)
+              // Manual code entry fallback (requires cashier secret code)
               Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _manualInputController,
+                      textCapitalization: TextCapitalization.characters,
                       decoration: InputDecoration(
-                        hintText: 'Ou entrez le code / ID commande...',
+                        hintText: 'Code secret caisse (ex: SEC-XXXX)...',
                         hintStyle: const TextStyle(fontSize: 12),
                         isDense: true,
                         contentPadding:
@@ -526,6 +676,11 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
                             final val = _manualInputController.text.trim();
                             if (val.isNotEmpty) {
                               _handleScannedCode(val);
+                            } else {
+                              _showFeedback(
+                                'Veuillez saisir le code secret fourni par le caissier.',
+                                isError: true,
+                              );
                             }
                           },
                     style: ElevatedButton.styleFrom(
@@ -538,6 +693,11 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
                     child: const Text('Valider', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Le code secret est affiché sur l\'écran du caissier au comptoir.',
+                style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
               ),
             ],
           ),
@@ -564,7 +724,7 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
           Text(
             _cameraErrorMessage.isNotEmpty
                 ? _cameraErrorMessage
-                : 'Utilisez la saisie manuelle ci-dessous avec le code fourni par le caissier.',
+                : 'Demandez au caissier le code secret affiché sur son écran pour le saisir ci-dessous.',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white70, fontSize: 11),
           ),
@@ -573,4 +733,3 @@ class _ClientQrScannerDialogState extends State<ClientQrScannerDialog> {
     );
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/payment_timer_service.dart';
+import '../services/order_service.dart';
 import 'qr_payment_dialogs.dart';
 
 /// A compact, animated countdown chip to be placed in the app's leading area
@@ -60,7 +61,8 @@ class _CountdownChip extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
-          ClientQrScannerDialog.show(context);
+          final targetId = PaymentTimerService().trackedOrder?.id;
+          ClientQrScannerDialog.show(context, targetOrderId: targetId);
         },
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -102,7 +104,9 @@ class _BlockedChip extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
         onTap: () {
-          ClientQrScannerDialog.show(context);
+          final targetId = PaymentTimerService().trackedOrder?.id ??
+              OrderService().blockingUnpaidOrder?.id;
+          ClientQrScannerDialog.show(context, targetOrderId: targetId);
         },
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),

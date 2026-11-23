@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/order_model.dart';
@@ -86,6 +87,17 @@ class OrderService extends ChangeNotifier {
     }
   }
 
+  /// Generates a secure, human-readable cashier validation code (e.g. SEC-8K2A)
+  static String generateSecurityCode() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rnd = math.Random();
+    final buffer = StringBuffer('SEC-');
+    for (var i = 0; i < 4; i++) {
+      buffer.write(chars[rnd.nextInt(chars.length)]);
+    }
+    return buffer.toString();
+  }
+
   /// Creates and submits a new order to Firestore
   Future<OrderModel> submitOrder({
     required String customerName,
@@ -111,6 +123,7 @@ class OrderService extends ChangeNotifier {
     const vatRate = 0.10;
     final subtotalHt = totalTtc / (1.0 + vatRate);
     final vatAmount = totalTtc - subtotalHt;
+    final securityCode = generateSecurityCode();
 
     final orderData = <String, dynamic>{
       'createdAt': Timestamp.fromDate(now),
@@ -133,6 +146,7 @@ class OrderService extends ChangeNotifier {
       'paymentStatus': 'unpaid',
       'clientLeftWithoutPaying': false,
       'isSentToManager': true,
+      'paymentSecurityCode': securityCode,
     };
 
     // Save to Firestore — auto-generates a document ID
@@ -153,7 +167,7 @@ class OrderService extends ChangeNotifier {
     debugPrint(
         '🔔 [ADMIN COMMANDE] Reçue (${order.status}) : ${order.id} | '
         'Client: ${order.customerName} | Table: ${order.tableNumber ?? "N/A"} | '
-        'Paiement: ${order.paymentStatus}');
+        'Paiement: ${order.paymentStatus} | Code caisse: $securityCode');
 
     return order;
   }
@@ -187,7 +201,64 @@ class OrderService extends ChangeNotifier {
         '🚨 [ALERTE SÉCURITÉ RESTAURANT] Client parti sans payer pour $orderId !');
   }
 
-  /// Client settles the bill: unblocks the app and marks order as paid
+  /// Ensures that an order has a payment security code (generates and persists one if missing).
+  Future<String> ensurePaymentSecurityCode(OrderModel order) async {
+    if (order.paymentSecurityCode != null &&
+        order.paymentSecurityCode!.trim().isNotEmpty) {
+      return order.paymentSecurityCode!;
+    }
+    final newCode = generateSecurityCode();
+    await _db.collection('orders').doc(order.id).update({
+      'paymentSecurityCode': newCode,
+    });
+    return newCode;
+  }
+
+  /// Client settles the bill at the cashier: validates the cashier security code against Firestore.
+  /// Strictly prevents unauthorized clients from unblocking orders with fake scans.
+  Future<void> settlePaymentWithVerification({
+    required String orderId,
+    required String securityCode,
+  }) async {
+    final doc = await _db.collection('orders').doc(orderId).get();
+    if (!doc.exists) {
+      throw Exception('Commande introuvable dans le système (#$orderId).');
+    }
+
+    final data = doc.data()!;
+    final currentPaymentStatus = data['paymentStatus'] as String? ?? 'unpaid';
+    if (currentPaymentStatus == 'paid') {
+      PaymentTimerService().clearTimer();
+      return; // Already paid
+    }
+
+    final storedSecurityCode = data['paymentSecurityCode'] as String?;
+    final cleanInputCode = securityCode.trim().toUpperCase();
+
+    if (storedSecurityCode == null || storedSecurityCode.trim().isEmpty) {
+      // Legacy order with no security code yet: require cashier direct action
+      throw Exception(
+        'Cette commande nécessite une validation directe par le caissier au comptoir.',
+      );
+    }
+
+    if (storedSecurityCode.trim().toUpperCase() != cleanInputCode) {
+      throw Exception(
+        'Code de sécurité caisse incorrect. Veuillez scanner le QR Code officiel présenté par le caissier.',
+      );
+    }
+
+    // Security check passed: mark order as paid and unblock
+    await _db.collection('orders').doc(orderId).update({
+      'paymentStatus': 'paid',
+      'clientLeftWithoutPaying': false,
+    });
+    PaymentTimerService().clearTimer();
+    debugPrint(
+        '✅ [PAIEMENT VALIDÉ PAR QR CAISSE] Commande $orderId réglée avec le code $cleanInputCode.');
+  }
+
+  /// Cashier settles the bill directly from the POS / Admin tablet
   Future<void> settlePaymentAndUnblock(String orderId) async {
     await _db.collection('orders').doc(orderId).update({
       'paymentStatus': 'paid',
