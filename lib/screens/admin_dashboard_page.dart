@@ -12,6 +12,7 @@ import '../widgets/admin_reviews_view.dart';
 import 'login_page.dart';
 import 'pdf_preview_page.dart';
 import '../widgets/qr_payment_dialogs.dart';
+import 'table_qr_codes_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   const AdminDashboardPage({super.key});
@@ -110,6 +111,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           _buildCategoriesView(primaryColor),
           _buildSupplementsView(primaryColor),
           AdminReviewsView(primaryColor: primaryColor),
+          const TableQrCodesPage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -148,6 +150,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
             icon: Icon(Icons.rate_review_outlined),
             selectedIcon: Icon(Icons.rate_review_rounded, color: primaryColor),
             label: 'Avis clients',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.qr_code_outlined),
+            selectedIcon: Icon(Icons.qr_code_rounded, color: primaryColor),
+            label: 'QR Tables',
           ),
         ],
       ),

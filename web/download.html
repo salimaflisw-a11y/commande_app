@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Télécharger l'application</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #E65100 0%, #FF8F00 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 40px 32px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    }
+
+    .logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #E65100, #FF8F00);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 40px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #263238;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #78909C;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      width: 100%;
+      padding: 18px 20px;
+      border-radius: 14px;
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 600;
+      transition: transform 0.15s, box-shadow 0.15s;
+      margin-bottom: 14px;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn:active { transform: scale(0.97); }
+
+    .btn-android {
+      background: #263238;
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(38,50,56,0.25);
+    }
+
+    .btn-ios {
+      background: #ECEFF1;
+      color: #90A4AE;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .ios-note {
+      font-size: 11px;
+      color: #B0BEC5;
+      margin-top: -8px;
+      margin-bottom: 14px;
+    }
+
+    .steps {
+      background: #FFF3E0;
+      border-radius: 14px;
+      padding: 16px 18px;
+      text-align: left;
+      margin-top: 24px;
+    }
+
+    .steps-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #E65100;
+      margin-bottom: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+      font-size: 12.5px;
+      color: #5D4037;
+      line-height: 1.4;
+    }
+
+    .step:last-child { margin-bottom: 0; }
+
+    .step-num {
+      background: #E65100;
+      color: #fff;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    .footer {
+      margin-top: 20px;
+      font-size: 11px;
+      color: #B0BEC5;
+    }
+
+    /* shown/hidden by JS */
+    #androidSection, #iosSection { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">🍽️</div>
+    <h1>Commandez depuis votre table</h1>
+    <p class="subtitle">Téléchargez notre application pour consulter le menu et commander directement depuis votre table.</p>
+
+    <!-- Android -->
+    <div id="androidSection">
+      <a class="btn btn-android" id="apkDownloadBtn" href="#" target="_blank" rel="noopener">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M17.523 15.341l1.33 2.306a.5.5 0 0 1-.866.5l-1.348-2.336A7.948 7.948 0 0 1 12 17a7.948 7.948 0 0 1-4.639-1.189L5.013 18.147a.5.5 0 0 1-.866-.5l1.33-2.306A7.976 7.976 0 0 1 2 9h20a7.976 7.976 0 0 1-3.477 6.341zM8.5 12a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm7 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2zM6.94 5.166l-1.5-2.598a.5.5 0 0 1 .866-.5l1.521 2.634A7.956 7.956 0 0 1 12 4c1.47 0 2.846.396 4.173 1.118l-.826-.143 1.52-2.634a.5.5 0 0 1 .867.5l-1.5 2.598A7.985 7.985 0 0 1 20 9H4a7.985 7.985 0 0 1 2.94-3.834z"/>
+        </svg>
+        Télécharger l'application (Android)
+      </a>
+
+      <div class="steps">
+        <div class="steps-title">📋 Comment installer</div>
+        <div class="step">
+          <div class="step-num">1</div>
+          <span>Appuyez sur le bouton ci-dessus pour télécharger le fichier APK.</span>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <span>Ouvrez le fichier téléchargé depuis vos notifications ou le dossier Téléchargements.</span>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <span>Si demandé, autorisez l'installation depuis des sources inconnues et appuyez sur <strong>Installer</strong>.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- iOS -->
+    <div id="iosSection">
+      <div class="btn btn-ios">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+        </svg>
+        App Store — Bientôt disponible
+      </div>
+      <p class="ios-note">L'application iPhone sera disponible prochainement.</p>
+    </div>
+
+    <p class="footer">En téléchargeant l'application, vous acceptez nos conditions d'utilisation.</p>
+  </div>
+
+  <script>
+    // ── REPLACE THIS with your Google Drive direct download link ──────────────
+    // Steps to get it:
+    // 1. Upload app-release.apk to Google Drive
+    // 2. Right-click → Share → "Anyone with the link" → Copy link
+    // 3. The link looks like: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    // 4. Change it to:        https://drive.google.com/uc?export=download&id=FILE_ID
+    // 5. Paste that URL below
+    var APK_URL = 'https://drive.google.com/uc?export=download&id=1c-0RF7UaE5-1Cm1v8i5XT9Uwhk4abBRp';
+    // ─────────────────────────────────────────────────────────────────────────
+
+    (function () {
+      document.getElementById('apkDownloadBtn').href = APK_URL;
+
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+      const isIOS = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+
+      if (isIOS) {
+        document.getElementById('iosSection').style.display = 'block';
+      } else {
+        document.getElementById('androidSection').style.display = 'block';
+      }
+    })();
+  </script>
+</body>
+</html>

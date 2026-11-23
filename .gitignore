@@ -44,5 +44,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase - do not expose credentials in public repos
+lib/firebase_options.dart
+
 # Widget Preview related
 .widget_preview/
